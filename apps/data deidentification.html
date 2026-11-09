@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企業資料去識別化與商業機密防護工具 (Enterprise Data Anonymizer)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS (xlsx) for reading/writing Excel & CSV -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- CryptoJS for SHA-256 Hash -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            900: '#0c4a6e',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Microsoft JhengHei', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-slate-900 text-white border-b border-slate-800 shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-emerald-500 p-2 rounded-lg text-slate-900 font-bold">
+                    <i data-lucide="shield-check" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h1 class="text-lg font-bold tracking-wide">DataGuard Pro 本地端去識別化工具</h1>
+                        <span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-full font-medium">Ruby.C製作</span>
+                    </div>
+                    <p class="text-xs text-slate-400">零伺服器傳輸 · 100% 瀏覽器端安全運算</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span id="fileStatusBadge" class="hidden items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                    <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 mr-1.5 text-emerald-400"></i>
+                    <span id="loadedFileName">filename.xlsx</span>
+                </span>
+                <button id="btnReset" onclick="resetApp()" class="hidden text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-md border border-slate-700 transition">
+                    重新上傳
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+
+        <!-- Step 1: File Upload Screen (Initial View) -->
+        <section id="uploadSection" class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center my-auto">
+            <div class="max-w-xl mx-auto">
+                <div class="w-16 h-16 bg-brand-50 rounded-full flex items-center justify-center mx-auto mb-4 text-brand-600 border border-brand-100">
+                    <i data-lucide="upload-cloud" class="w-8 h-8"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-900 mb-2">上傳資料庫或試算表</h2>
+                <p class="text-slate-500 text-sm mb-6">支援包含多個工作表 (Sheets) 的 Excel (.xlsx, .xls) 或 CSV 檔案。<br>系統將會自動檢測敏感個資（身分證、電話、Email等）與營業秘密金額。</p>
+                
+                <div id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-xl p-8 bg-slate-50 hover:bg-brand-50/30 transition cursor-pointer flex flex-col items-center justify-center gap-3">
+                    <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden">
+                    <i data-lucide="file-plus" class="w-10 h-10 text-slate-400"></i>
+                    <span class="text-sm font-semibold text-slate-700">點擊選擇檔案 或 將檔案拖拽至此處</span>
+                    <span class="text-xs text-slate-400">檔案完全於本地安全解析，不會上傳至任何雲端伺服器</span>
+                </div>
+
+                <!-- Load Demo File Button -->
+                <div class="mt-4 flex justify-center">
+                    <button onclick="loadSampleDemoData()" class="inline-flex items-center text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-4 py-2 rounded-lg transition shadow-sm">
+                        <i data-lucide="sparkles" class="w-4 h-4 mr-1.5 text-emerald-600"></i>
+                        載入測試範例檔 (包含多工作表客戶與財務數據)
+                    </button>
+                </div>
+
+                <!-- Features Highlight -->
+                <div class="grid grid-cols-3 gap-4 mt-8 pt-8 border-t border-slate-100 text-left">
+                    <div class="flex items-start space-x-2">
+                        <i data-lucide="lock" class="w-5 h-5 text-emerald-600 mt-0.5"></i>
+                        <div>
+                            <h4 class="text-xs font-semibold text-slate-800">絕對商業安全</h4>
+                            <p class="text-[11px] text-slate-500">遵循個資法與商業秘密法，防止關鍵數據洩漏</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-2">
+                        <i data-lucide="git-fork" class="w-5 h-5 text-brand-600 mt-0.5"></i>
+                        <div>
+                            <h4 class="text-xs font-semibold text-slate-800">跨表關聯保留</h4>
+                            <p class="text-[11px] text-slate-500">假名化演算法維持一致雜湊，維護分析關聯性</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-2">
+                        <i data-lucide="file-key" class="w-5 h-5 text-purple-600 mt-0.5"></i>
+                        <div>
+                            <h4 class="text-xs font-semibold text-slate-800">完整對照表匯出</h4>
+                            <p class="text-[11px] text-slate-500">可選擇性匯出可逆映射對照表以供審計查核</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step 2: Main Workspace (Hidden Initial) -->
+        <div id="workspaceSection" class="hidden flex-1 flex flex-col gap-6">
+
+            <!-- Sheet Tabs & Action Bar -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar pb-1 max-w-2xl" id="sheetTabs">
+                    <!-- Sheet tabs generated dynamically -->
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="autoDetectCurrentSheet()" class="inline-flex items-center text-xs font-semibold bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 px-3 py-2 rounded-lg transition">
+                        <i data-lucide="wand2" class="w-4 h-4 mr-1.5"></i>
+                        自動辨識本頁敏感數據
+                    </button>
+                    <button onclick="applyAnonymization()" class="inline-flex items-center text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 px-4 py-2 rounded-lg shadow-sm transition">
+                        <i data-lucide="play" class="w-4 h-4 mr-1.5"></i>
+                        執行全檔去識別化處理
+                    </button>
+                </div>
+            </div>
+
+            <!-- Workspace Layout: Left Rule Config / Right Data Preview -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-[500px]">
+                
+                <!-- Left Panel: Column Anonymization Rules Config (5 cols) -->
+                <div class="lg:col-span-5 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                    <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-xl">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-sm flex items-center">
+                                <i data-lucide="sliders" class="w-4 h-4 mr-2 text-brand-600"></i>
+                                欄位規則配置 (Current Sheet: <span id="currentSheetName" class="text-brand-600 ml-1">Sheet1</span>)
+                            </h3>
+                            <p class="text-xs text-slate-500">針對各欄位選擇適當的保護與去識別化機制</p>
+                        </div>
+                        <span id="detectedCountBadge" class="text-xs bg-amber-100 text-amber-800 font-medium px-2 py-0.5 rounded-full border border-amber-200">
+                            已辨識 0 個敏感欄位
+                        </span>
+                    </div>
+
+                    <!-- Column Rule Table/List -->
+                    <div class="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-3" id="columnRulesContainer">
+                        <!-- Dynamic Column Rules List inserted here -->
+                    </div>
+                </div>
+
+                <!-- Right Panel: Live Data Preview (7 cols) -->
+                <div class="lg:col-span-7 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                    <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50 rounded-t-xl">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-sm flex items-center">
+                                <i data-lucide="table" class="w-4 h-4 mr-2 text-slate-600"></i>
+                                數據即時預覽 (含去識別化前後對比)
+                            </h3>
+                            <p class="text-xs text-slate-500">顯示前 50 筆紀錄。點擊右上方執行處理後可查看最終效果。</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="inline-flex items-center text-xs text-slate-500">
+                                <span class="w-2.5 h-2.5 rounded-full bg-amber-400 mr-1.5"></span> 偵測敏感
+                            </span>
+                            <span class="inline-flex items-center text-xs text-slate-500">
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1.5"></span> 已設定處理
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Data Table -->
+                    <div class="flex-1 overflow-auto custom-scrollbar p-2 max-h-[550px]">
+                        <table class="w-full text-xs text-left border-collapse" id="previewTable">
+                            <thead class="sticky top-0 bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+                                <tr id="previewTableHead">
+                                    <!-- Table headers -->
+                                </tr>
+                            </thead>
+                            <tbody id="previewTableBody" class="divide-y divide-slate-200 font-mono">
+                                <!-- Table rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Global Hash Salt & Export Settings Box -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 class="font-bold text-slate-800 text-sm mb-4 flex items-center">
+                    <i data-lucide="settings" class="w-4 h-4 mr-2 text-slate-600"></i>
+                    全域金鑰與匯出設定
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">假名化加鹽金鑰 (Salt Key)</label>
+                        <div class="relative">
+                            <input type="text" id="globalSalt" value="Enterprise-DataGuard-Salt-2026" class="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-brand-500 font-mono">
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1">相同鹽值可使跨檔案、跨工作表的相同個資產生一致代碼。</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">對照表匯出設定</label>
+                        <label class="flex items-center space-x-2 border border-slate-200 p-2.5 rounded-lg bg-slate-50 cursor-pointer">
+                            <input type="checkbox" id="chkExportMapping" checked class="rounded text-brand-600 focus:ring-brand-500">
+                            <span class="text-xs font-medium text-slate-700">自動併入 Mapping 對照表</span>
+                        </label>
+                        <p class="text-[11px] text-slate-400 mt-1">記錄原始值與假名/處理後數值之對應，請妥善保管。</p>
+                    </div>
+
+                    <div class="flex flex-col justify-end space-y-2">
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="exportDataOnly()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-3 rounded-lg shadow-sm transition flex items-center justify-center text-xs">
+                                <i data-lucide="file-text" class="w-3.5 h-3.5 mr-1.5"></i>
+                                下載去識別數據
+                            </button>
+                            <button onclick="exportMappingOnly()" class="bg-amber-600 hover:bg-amber-700 text-white font-medium py-2 px-3 rounded-lg shadow-sm transition flex items-center justify-center text-xs">
+                                <i data-lucide="key" class="w-3.5 h-3.5 mr-1.5"></i>
+                                下載對照表 (Mapping)
+                            </button>
+                        </div>
+                        <button onclick="exportProcessedData()" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2 px-4 rounded-lg shadow transition flex items-center justify-center text-xs">
+                            <i data-lucide="download" class="w-4 h-4 mr-2"></i>
+                            一鍵全下載 (數據 + 對照表)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer Branding -->
+    <footer class="bg-slate-900 border-t border-slate-800 text-slate-400 py-3 text-center text-xs">
+        <p>Enterprise Data Guard &copy; 2026 · 設計開發：<span class="text-emerald-400 font-medium">Ruby.C製作</span> · 100% Client-Side Privacy Tool</p>
+    </footer>
+
+    <!-- Global Toast Notification Modal -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-lg shadow-xl text-xs flex items-center space-x-2 transition-all transform translate-y-20 opacity-0 pointer-events-none z-50">
+        <i data-lucide="info" id="toastIcon" class="w-4 h-4 text-emerald-400"></i>
+        <span id="toastMsg">通知訊息</span>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Application State
+        let rawWorkbook = null;
+        let originalFileName = "";
+        let sheetsData = {}; // { sheetName: [ {col1: val1, col2: val2}, ... ] }
+        let currentSheet = "";
+        let columnConfigs = {}; // { sheetName: { colName: { type: 'none|mask|hash|generalize|scale|noise|suppress', opt: {} } } }
+        let processedWorkbook = null;
+        let globalMappingTable = {}; // { "SheetName.ColumnName": { original: anonymized } }
+
+        // Regulatory Patterns for Automatic Sensitivity Detection
+        const PATTERNS = {
+            TW_ID: /^[A-Z][12]\d{8}$/,
+            EMAIL: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+            PHONE: /^09\d{8}$|^0\d{1,2}-?\d{6,8}$/,
+            CREDIT_CARD: /^\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}$/,
+            IP_ADDR: /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/,
+            NAME_KW: /(姓名|客戶名|負責人|聯絡人|員工|Name|Owner|Contact)/i,
+            FINANCIAL_KW: /(金額|薪資|營收|利潤|成本|單價|資產|Amount|Salary|Revenue|Cost|Price|Profit|Balance)/i
+        };
+
+        // DOM Elements
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const uploadSection = document.getElementById('uploadSection');
+        const workspaceSection = document.getElementById('workspaceSection');
+
+        // File Drag & Drop Listeners
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-brand-500', 'bg-brand-50/50'); });
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('border-brand-500', 'bg-brand-50/50'); });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-brand-500', 'bg-brand-50/50');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) handleFile(e.target.files[0]);
+        });
+
+        // Toast Notification System
+        function showToast(msg, type = 'info') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            const toastIcon = document.getElementById('toastIcon');
+            
+            toastMsg.innerText = msg;
+            if (type === 'success') {
+                toastIcon.setAttribute('data-lucide', 'check-circle-2');
+                toastIcon.className = 'w-4 h-4 text-emerald-400';
+            } else if (type === 'warning') {
+                toastIcon.setAttribute('data-lucide', 'alert-triangle');
+                toastIcon.className = 'w-4 h-4 text-amber-400';
+            } else {
+                toastIcon.setAttribute('data-lucide', 'info');
+                toastIcon.className = 'w-4 h-4 text-blue-400';
+            }
+            lucide.createIcons();
+
+            toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+            }, 3500);
+        }
+
+        // Read uploaded Excel/CSV file
+        function handleFile(file) {
+            originalFileName = file.name;
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    rawWorkbook = XLSX.read(data, { type: 'array', cellDates: true });
+                    
+                    sheetsData = {};
+                    columnConfigs = {};
+                    
+                    rawWorkbook.SheetNames.forEach(sheetName => {
+                        const worksheet = rawWorkbook.Sheets[sheetName];
+                        // Convert worksheet to JSON array of objects
+                        const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                        sheetsData[sheetName] = json;
+                        columnConfigs[sheetName] = {};
+
+                        // Initialize default config for headers
+                        if (json.length > 0) {
+                            Object.keys(json[0]).forEach(col => {
+                                columnConfigs[sheetName][col] = { type: 'none', opt: {} };
+                            });
+                        }
+                    });
+
+                    currentSheet = rawWorkbook.SheetNames[0];
+                    initWorkspaceUI();
+                    showToast(`成功解析檔案，包含 ${rawWorkbook.SheetNames.length} 個工作表`, 'success');
+
+                } catch (err) {
+                    showToast('檔案解析失敗，請確認檔案格式是否正確。', 'warning');
+                    console.error(err);
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Initialize Workspace after file load
+        function initWorkspaceUI() {
+            uploadSection.classList.add('hidden');
+            workspaceSection.classList.remove('hidden');
+            document.getElementById('fileStatusBadge').classList.remove('hidden');
+            document.getElementById('fileStatusBadge').classList.add('flex');
+            document.getElementById('btnReset').classList.remove('hidden');
+            document.getElementById('loadedFileName').innerText = originalFileName;
+
+            renderSheetTabs();
+            autoDetectCurrentSheet(); // Auto run sensitivity detection on start
+            renderColumnRules();
+            renderPreviewTable();
+        }
+
+        // Render Sheet Tabs
+        function renderSheetTabs() {
+            const tabsContainer = document.getElementById('sheetTabs');
+            tabsContainer.innerHTML = "";
+
+            rawWorkbook.SheetNames.forEach(name => {
+                const isActive = name === currentSheet;
+                const btn = document.createElement('button');
+                btn.className = `px-3.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition flex items-center space-x-1.5 ${
+                    isActive 
+                    ? 'bg-brand-600 text-white shadow-sm' 
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`;
+                btn.innerHTML = `<i data-lucide="table" class="w-3.5 h-3.5"></i><span>${name}</span>`;
+                btn.onclick = () => switchSheet(name);
+                tabsContainer.appendChild(btn);
+            });
+            lucide.createIcons();
+            document.getElementById('currentSheetName').innerText = currentSheet;
+        }
+
+        function switchSheet(sheetName) {
+            currentSheet = sheetName;
+            renderSheetTabs();
+            renderColumnRules();
+            renderPreviewTable();
+        }
+
+        // Automatic Sensitivity Detection Engine
+        function autoDetectCurrentSheet() {
+            const rows = sheetsData[currentSheet];
+            if (!rows || rows.length === 0) return;
+
+            const cols = Object.keys(rows[0]);
+            let detectedCount = 0;
+
+            cols.forEach(col => {
+                // Check Header Name keyword
+                const isNameCol = PATTERNS.NAME_KW.test(col);
+                const isFinancialCol = PATTERNS.FINANCIAL_KW.test(col);
+
+                // Sample first 20 non-empty values in this column
+                let sampleVals = [];
+                for (let i = 0; i < rows.length && sampleVals.length < 20; i++) {
+                    const v = String(rows[i][col] || '').trim();
+                    if (v) sampleVals.push(v);
+                }
+
+                let matchType = null;
+                
+                // Match values against Regex
+                for (let val of sampleVals) {
+                    if (PATTERNS.TW_ID.test(val)) { matchType = 'tw_id'; break; }
+                    if (PATTERNS.EMAIL.test(val)) { matchType = 'email'; break; }
+                    if (PATTERNS.PHONE.test(val)) { matchType = 'phone'; break; }
+                    if (PATTERNS.CREDIT_CARD.test(val)) { matchType = 'card'; break; }
+                    if (PATTERNS.IP_ADDR.test(val)) { matchType = 'ip'; break; }
+                }
+
+                // Apply automated default rules based on detection
+                if (matchType === 'tw_id') {
+                    columnConfigs[currentSheet][col] = { type: 'mask', opt: { start: 3, end: 4, char: '*' }, detected: '台灣身分證' };
+                    detectedCount++;
+                } else if (matchType === 'email') {
+                    columnConfigs[currentSheet][col] = { type: 'mask_email', opt: { char: '*' }, detected: 'Email 電子郵件' };
+                    detectedCount++;
+                } else if (matchType === 'phone') {
+                    columnConfigs[currentSheet][col] = { type: 'mask', opt: { start: 4, end: 3, char: '*' }, detected: '電話/手機號碼' };
+                    detectedCount++;
+                } else if (matchType === 'card') {
+                    columnConfigs[currentSheet][col] = { type: 'mask', opt: { start: 4, end: 8, char: '*' }, detected: '信用卡號' };
+                    detectedCount++;
+                } else if (isNameCol) {
+                    columnConfigs[currentSheet][col] = { type: 'hash', opt: { method: 'sha256', prefix: 'ID_' }, detected: '姓名個資' };
+                    detectedCount++;
+                } else if (isFinancialCol) {
+                    columnConfigs[currentSheet][col] = { type: 'noise', opt: { noiseRange: 8, integerOnly: false, decimalPlaces: 2 }, detected: '營業機密/金額數據' };
+                    detectedCount++;
+                }
+            });
+
+            document.getElementById('detectedCountBadge').innerText = `已辨識 ${detectedCount} 個敏感欄位`;
+            renderColumnRules();
+            showToast(`已自動完成 [${currentSheet}] 敏感欄位掃描與建議配置`, 'info');
+        }
+
+        // Render Column Rules Configuration Panel
+        function renderColumnRules() {
+            const container = document.getElementById('columnRulesContainer');
+            container.innerHTML = "";
+
+            const rows = sheetsData[currentSheet];
+            if (!rows || rows.length === 0) {
+                container.innerHTML = `<div class="text-xs text-slate-400 p-4 text-center">工作表中無數據</div>`;
+                return;
+            }
+
+            const cols = Object.keys(rows[0]);
+
+            cols.forEach(col => {
+                const cfg = columnConfigs[currentSheet][col] || { type: 'none', opt: {} };
+                const isConfigured = cfg.type !== 'none';
+                
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-lg border transition ${
+                    isConfigured ? 'border-brand-200 bg-brand-50/20' : 'border-slate-200 bg-slate-50/50'
+                }`;
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="font-bold text-xs text-slate-800">${col}</span>
+                            ${cfg.detected ? `<span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200">🤖 ${cfg.detected}</span>` : ''}
+                        </div>
+                        <select onchange="updateRuleType('${col}', this.value)" class="text-xs border border-slate-300 rounded px-2 py-1 bg-white font-medium focus:ring-1 focus:ring-brand-500">
+                            <option value="none" ${cfg.type === 'none' ? 'selected' : ''}>不處理 (保持原樣)</option>
+                            <option value="hash" ${cfg.type === 'hash' ? 'selected' : ''}>假名化 (Hash / 代碼)</option>
+                            <option value="mask" ${cfg.type === 'mask' ? 'selected' : ''}>字元遮罩 (Masking)</option>
+                            <option value="mask_email" ${cfg.type === 'mask_email' ? 'selected' : ''}>Email 專用遮罩</option>
+                            <option value="generalize" ${cfg.type === 'generalize' ? 'selected' : ''}>數值泛化 (Binning/区间)</option>
+                            <option value="scale" ${cfg.type === 'scale' ? 'selected' : ''}>等比例縮放 (Scaling)</option>
+                            <option value="noise" ${cfg.type === 'noise' ? 'selected' : ''}>數值微擾 (±N 隨機範圍)</option>
+                            <option value="suppress" ${cfg.type === 'suppress' ? 'selected' : ''}>完全抹除 (Suppress)</option>
+                        </select>
+                    </div>
+                    <div id="opts-${col}" class="text-xs text-slate-600 pt-2 border-t border-slate-200/60 ${isConfigured ? '' : 'hidden'}">
+                        <!-- Dynamic options for selected strategy -->
+                    </div>
+                `;
+
+                container.appendChild(card);
+                renderRuleSubOptions(col, cfg);
+            });
+        }
+
+        // Update Sub-options UI per strategy
+        function renderRuleSubOptions(col, cfg) {
+            const optsDiv = document.getElementById(`opts-${col}`);
+            if (!optsDiv) return;
+
+            if (cfg.type === 'none') {
+                optsDiv.classList.add('hidden');
+                return;
+            }
+            optsDiv.classList.remove('hidden');
+
+            if (cfg.type === 'hash') {
+                optsDiv.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <label class="text-[11px] text-slate-500">前綴標籤:</label>
+                        <input type="text" value="${cfg.opt.prefix || 'ID_'}" onchange="updateRuleOpt('${col}', 'prefix', this.value)" class="w-20 border rounded px-1.5 py-0.5 text-xs">
+                        <span class="text-[10px] text-slate-400">保留跨表一致關聯</span>
+                    </div>
+                `;
+            } else if (cfg.type === 'mask') {
+                optsDiv.innerHTML = `
+                    <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+                        <span class="text-[11px] text-slate-500">保留前</span>
+                        <input type="number" value="${cfg.opt.start || 3}" min="0" onchange="updateRuleOpt('${col}', 'start', parseInt(this.value))" class="w-12 border rounded px-1 py-0.5 text-xs">
+                        <span class="text-[11px] text-slate-500">字，保留後</span>
+                        <input type="number" value="${cfg.opt.end || 4}" min="0" onchange="updateRuleOpt('${col}', 'end', parseInt(this.value))" class="w-12 border rounded px-1 py-0.5 text-xs">
+                        <span class="text-[11px] text-slate-500">字，其餘以</span>
+                        <input type="text" value="${cfg.opt.char || '*'}" maxlength="1" onchange="updateRuleOpt('${col}', 'char', this.value)" class="w-8 border rounded px-1 py-0.5 text-xs text-center">
+                        <span class="text-[11px] text-slate-500">遮罩</span>
+                    </div>
+                `;
+            } else if (cfg.type === 'mask_email') {
+                optsDiv.innerHTML = `
+                    <div class="text-[11px] text-slate-500">自動將 Email 帳號部分進行局部遮罩（如 j***n@example.com）</div>
+                `;
+            } else if (cfg.type === 'generalize') {
+                optsDiv.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <span class="text-[11px] text-slate-500">區間大小 (Step):</span>
+                        <input type="number" value="${cfg.opt.step || 10}" onchange="updateRuleOpt('${col}', 'step', parseFloat(this.value))" class="w-16 border rounded px-1.5 py-0.5 text-xs">
+                        <span class="text-[10px] text-slate-400">(例: 10 則 23 變為 "20-30")</span>
+                    </div>
+                `;
+            } else if (cfg.type === 'scale') {
+                optsDiv.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <span class="text-[11px] text-slate-500">縮放倍數 (Multiplier):</span>
+                        <input type="number" step="0.01" value="${cfg.opt.factor || 0.8}" onchange="updateRuleOpt('${col}', 'factor', parseFloat(this.value))" class="w-20 border rounded px-1.5 py-0.5 text-xs">
+                        <span class="text-[10px] text-slate-400">(例: 0.8 隱藏實際商業金額)</span>
+                    </div>
+                `;
+            } else if (cfg.type === 'noise') {
+                optsDiv.innerHTML = `
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-[11px] font-semibold text-slate-700">微擾參數 (±N):</span>
+                            <span class="text-[11px] text-slate-500">±</span>
+                            <input type="number" value="${cfg.opt.noiseRange !== undefined ? cfg.opt.noiseRange : 8}" step="any" onchange="updateRuleOpt('${col}', 'noiseRange', parseFloat(this.value))" class="w-20 border border-brand-300 rounded px-2 py-0.5 text-xs font-mono font-bold text-brand-700 bg-brand-50/50">
+                            <span class="text-[10px] text-slate-400">(如設為 8，則隨機在 [-8, +8] 浮動)</span>
+                        </div>
+                        <div class="flex items-center space-x-3 text-[11px] text-slate-600">
+                            <label class="flex items-center space-x-1 cursor-pointer">
+                                <input type="checkbox" ${cfg.opt.integerOnly ? 'checked' : ''} onchange="updateRuleOpt('${col}', 'integerOnly', this.checked)" class="rounded text-brand-600">
+                                <span>取四捨五入整數</span>
+                            </label>
+                            ${!cfg.opt.integerOnly ? `
+                                <div class="flex items-center space-x-1">
+                                    <span>小數位數:</span>
+                                    <input type="number" min="0" max="4" value="${cfg.opt.decimalPlaces !== undefined ? cfg.opt.decimalPlaces : 2}" onchange="updateRuleOpt('${col}', 'decimalPlaces', parseInt(this.value))" class="w-10 border rounded px-1 py-0.5 text-xs">
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            } else if (cfg.type === 'suppress') {
+                optsDiv.innerHTML = `
+                    <span class="text-[11px] text-red-500">該欄位數據將被完全替換為 [REDACTED] 或清空。</span>
+                `;
+            }
+        }
+
+        // Rule Config Handlers
+        function updateRuleType(col, type) {
+            if (!columnConfigs[currentSheet]) columnConfigs[currentSheet] = {};
+            
+            // Set defaults for sub-options
+            let opt = {};
+            if (type === 'hash') opt = { prefix: 'ID_' };
+            if (type === 'mask') opt = { start: 3, end: 4, char: '*' };
+            if (type === 'generalize') opt = { step: 10 };
+            if (type === 'scale') opt = { factor: 0.8 };
+            if (type === 'noise') opt = { noiseRange: 8, integerOnly: false, decimalPlaces: 2 };
+
+            columnConfigs[currentSheet][col] = { type, opt };
+            renderColumnRules();
+            renderPreviewTable();
+        }
+
+        function updateRuleOpt(col, key, value) {
+            if (columnConfigs[currentSheet][col]) {
+                columnConfigs[currentSheet][col].opt[key] = value;
+                renderColumnRules();
+                renderPreviewTable();
+            }
+        }
+
+        // SHA-256 Hash Algorithm using CryptoJS
+        function generateConsistentHash(val, salt, prefix = 'ID_') {
+            if (!val) return "";
+            const str = String(val) + salt;
+            const hash = CryptoJS.SHA256(str).toString(CryptoJS.enc.Hex).substring(0, 8).toUpperCase();
+            return prefix + hash;
+        }
+
+        // Load Built-in Demo Data (Multi-sheet Mock Data)
+        function loadSampleDemoData() {
+            originalFileName = "企業營運與客戶範例資料.xlsx";
+            
+            // Sheet 1: Customer Personal Info
+            const sheet1Data = [
+                { "姓名": "陳大明", "身分證字號": "A123456789", "手機號碼": "0912345678", "電子郵件": "daming.chen@example.com", "年齡": 34, "交易金額": 150000 },
+                { "姓名": "林小姐", "身分證字號": "B223456781", "手機號碼": "0923456789", "電子郵件": "xiaojie.lin@company.org", "年齡": 28, "交易金額": 89000 },
+                { "姓名": "張建國", "身分證字號": "C198765432", "手機號碼": "0934567890", "電子郵件": "jianguo.chang@service.net", "年齡": 45, "交易金額": 520000 },
+                { "姓名": "黃志豪", "身分證字號": "D112233445", "手機號碼": "0945678901", "電子郵件": "zhihao.huang@techcorp.io", "年齡": 52, "交易金額": 310000 },
+                { "姓名": "蔡美玲", "身分證字號": "E234567890", "手機號碼": "0956789012", "電子郵件": "meiling.tsai@business.com", "年齡": 31, "交易金額": 95000 }
+            ];
+
+            // Sheet 2: Enterprise Financial Details
+            const sheet2Data = [
+                { "交易單號": "TX-2026-001", "客戶姓名": "陳大明", "專案營收": 150000, "成本支出": 90000, "淨利金額": 60000, "經辦人 Email": "sales.agent1@enterprise.com" },
+                { "交易單號": "TX-2026-002", "客戶姓名": "林小姐", "專案營收": 89000, "成本支出": 50000, "淨利金額": 39000, "經辦人 Email": "sales.agent2@enterprise.com" },
+                { "交易單號": "TX-2026-003", "客戶姓名": "張建國", "專案營收": 520000, "成本支出": 320000, "淨利金額": 200000, "經辦人 Email": "sales.agent1@enterprise.com" },
+                { "交易單號": "TX-2026-004", "客戶姓名": "黃志豪", "專案營收": 310000, "成本支出": 180000, "淨利金額": 130000, "經辦人 Email": "sales.agent3@enterprise.com" },
+                { "交易單號": "TX-2026-005", "客戶姓名": "蔡美玲", "專案營收": 95000, "成本支出": 60000, "淨利金額": 35000, "經辦人 Email": "sales.agent2@enterprise.com" }
+            ];
+
+            // Create XLSX workbook object
+            const wb = XLSX.utils.book_new();
+            const ws1 = XLSX.utils.json_to_sheet(sheet1Data);
+            const ws2 = XLSX.utils.json_to_sheet(sheet2Data);
+            
+            XLSX.utils.book_append_sheet(wb, ws1, "客戶個人資料表");
+            XLSX.utils.book_append_sheet(wb, ws2, "企業財務明細表");
+
+            rawWorkbook = wb;
+            sheetsData = {
+                "客戶個人資料表": sheet1Data,
+                "企業財務明細表": sheet2Data
+            };
+            
+            columnConfigs = {
+                "客戶個人資料表": {},
+                "企業財務明細表": {}
+            };
+
+            Object.keys(sheet1Data[0]).forEach(col => columnConfigs["客戶個人資料表"][col] = { type: 'none', opt: {} });
+            Object.keys(sheet2Data[0]).forEach(col => columnConfigs["企業財務明細表"][col] = { type: 'none', opt: {} });
+
+            currentSheet = "客戶個人資料表";
+            initWorkspaceUI();
+            showToast('已順利載入測試範例檔！', 'success');
+        }
+
+        // Anonymization Processing Core Logic
+        function anonymizeValue(val, col, sheetName) {
+            if (val === undefined || val === null || val === '') return '';
+
+            const cfg = columnConfigs[sheetName]?.[col] || { type: 'none' };
+            const salt = document.getElementById('globalSalt').value || 'salt';
+            const strVal = String(val);
+
+            switch (cfg.type) {
+                case 'hash': {
+                    const anonymized = generateConsistentHash(strVal, salt, cfg.opt.prefix || 'ID_');
+                    const mapKey = `${sheetName}.${col}`;
+                    if (!globalMappingTable[mapKey]) globalMappingTable[mapKey] = {};
+                    globalMappingTable[mapKey][strVal] = anonymized;
+                    return anonymized;
+                }
+                case 'mask': {
+                    const start = cfg.opt.start || 0;
+                    const end = cfg.opt.end || 0;
+                    const char = cfg.opt.char || '*';
+                    
+                    if (strVal.length <= start + end) {
+                        return char.repeat(strVal.length);
+                    }
+                    const head = strVal.substring(0, start);
+                    const tail = strVal.substring(strVal.length - end);
+                    const middle = char.repeat(strVal.length - start - end);
+                    return head + middle + tail;
+                }
+                case 'mask_email': {
+                    const parts = strVal.split('@');
+                    if (parts.length === 2) {
+                        const name = parts[0];
+                        const domain = parts[1];
+                        const maskedName = name.length > 2 
+                            ? name[0] + '*'.repeat(name.length - 2) + name[name.length - 1]
+                            : name[0] + '*';
+                        return `${maskedName}@${domain}`;
+                    }
+                    return strVal;
+                }
+                case 'generalize': {
+                    const num = parseFloat(strVal);
+                    if (isNaN(num)) return strVal;
+                    const step = cfg.opt.step || 10;
+                    const lower = Math.floor(num / step) * step;
+                    const upper = lower + step;
+                    return `${lower} - ${upper}`;
+                }
+                case 'scale': {
+                    const num = parseFloat(strVal);
+                    if (isNaN(num)) return strVal;
+                    const factor = cfg.opt.factor !== undefined ? cfg.opt.factor : 1;
+                    return (num * factor).toFixed(2);
+                }
+                case 'noise': {
+                    const num = parseFloat(strVal);
+                    if (isNaN(num)) return strVal;
+
+                    // Range N (Defaults to ±8)
+                    const N = cfg.opt.noiseRange !== undefined ? cfg.opt.noiseRange : 8;
+                    // Random delta in [-N, +N]
+                    const delta = (Math.random() * 2 * N) - N;
+                    const resultNum = num + delta;
+
+                    let finalVal;
+                    if (cfg.opt.integerOnly) {
+                        finalVal = Math.round(resultNum);
+                    } else {
+                        const decimals = cfg.opt.decimalPlaces !== undefined ? cfg.opt.decimalPlaces : 2;
+                        finalVal = parseFloat(resultNum.toFixed(decimals));
+                    }
+
+                    // Record mapping for noise values
+                    const mapKey = `${sheetName}.${col}`;
+                    if (!globalMappingTable[mapKey]) globalMappingTable[mapKey] = {};
+                    globalMappingTable[mapKey][strVal] = finalVal;
+
+                    return finalVal;
+                }
+                case 'suppress': {
+                    return '[REDACTED]';
+                }
+                default:
+                    return strVal;
+            }
+        }
+
+        // Render Live Preview Table
+        function renderPreviewTable() {
+            const head = document.getElementById('previewTableHead');
+            const body = document.getElementById('previewTableBody');
+            head.innerHTML = "";
+            body.innerHTML = "";
+
+            const rows = sheetsData[currentSheet];
+            if (!rows || rows.length === 0) return;
+
+            const cols = Object.keys(rows[0]);
+
+            // Header row
+            cols.forEach(col => {
+                const cfg = columnConfigs[currentSheet][col] || { type: 'none' };
+                const th = document.createElement('th');
+                th.className = `p-2.5 font-semibold border-r border-slate-200 text-xs ${
+                    cfg.type !== 'none' ? 'bg-emerald-50 text-emerald-800' : ''
+                }`;
+                th.innerHTML = `
+                    <div class="flex flex-col">
+                        <span>${col}</span>
+                        ${cfg.type !== 'none' ? `<span class="text-[9px] font-normal text-emerald-600 font-sans">[${cfg.type}]</span>` : ''}
+                    </div>
+                `;
+                head.appendChild(th);
+            });
+
+            // Preview limit: First 50 rows
+            const previewLimit = Math.min(rows.length, 50);
+
+            for (let i = 0; i < previewLimit; i++) {
+                const tr = document.createElement('tr');
+                tr.className = i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
+
+                cols.forEach(col => {
+                    const origVal = rows[i][col];
+                    const cfg = columnConfigs[currentSheet][col] || { type: 'none' };
+                    const anonymizedVal = anonymizeValue(origVal, col, currentSheet);
+                    const isChanged = cfg.type !== 'none' && String(origVal) !== String(anonymizedVal);
+
+                    const td = document.createElement('td');
+                    td.className = `p-2 border-r border-slate-200 text-xs ${isChanged ? 'bg-emerald-50/40' : ''}`;
+
+                    if (isChanged) {
+                        td.innerHTML = `
+                            <div class="flex flex-col">
+                                <span class="text-emerald-700 font-semibold">${anonymizedVal}</span>
+                                <span class="text-[10px] text-slate-400 line-through">${origVal}</span>
+                            </div>
+                        `;
+                    } else {
+                        td.innerText = origVal !== undefined ? origVal : '';
+                    }
+
+                    tr.appendChild(td);
+                });
+
+                body.appendChild(tr);
+            }
+        }
+
+        // Apply Anonymization across all worksheets
+        function applyAnonymization() {
+            globalMappingTable = {}; // Reset mapping table
+
+            // Process all sheets
+            const newWorkbook = XLSX.utils.book_new();
+
+            rawWorkbook.SheetNames.forEach(sheetName => {
+                const originalRows = sheetsData[sheetName];
+                if (!originalRows || originalRows.length === 0) return;
+
+                const cols = Object.keys(originalRows[0]);
+                const processedRows = originalRows.map(row => {
+                    let newRow = {};
+                    cols.forEach(col => {
+                        newRow[col] = anonymizeValue(row[col], col, sheetName);
+                    });
+                    return newRow;
+                });
+
+                const newSheet = XLSX.utils.json_to_sheet(processedRows);
+                XLSX.utils.book_append_sheet(newWorkbook, newSheet, sheetName);
+            });
+
+            processedWorkbook = newWorkbook;
+            renderPreviewTable();
+            showToast('全檔去識別化處理已成功執行！可準備匯出。', 'success');
+        }
+
+        // Export Data Only Button Handler
+        function exportDataOnly() {
+            if (!rawWorkbook) return;
+            applyAnonymization();
+
+            const nameParts = originalFileName.split('.');
+            const ext = nameParts.pop();
+            const baseName = nameParts.join('.');
+            const exportFileName = `${baseName}_Anonymized.${ext === 'csv' ? 'csv' : 'xlsx'}`;
+
+            if (ext.toLowerCase() === 'csv') {
+                const firstSheetName = rawWorkbook.SheetNames[0];
+                const csvOutput = XLSX.utils.sheet_to_csv(processedWorkbook.Sheets[firstSheetName]);
+                downloadBlob(csvOutput, exportFileName, 'text/csv;charset=utf-8;');
+            } else {
+                XLSX.writeFile(processedWorkbook, exportFileName);
+            }
+            showToast('去識別化數據檔已順利下載！', 'success');
+        }
+
+        // Export Mapping Table Only Button Handler
+        function exportMappingOnly() {
+            if (!rawWorkbook) return;
+            applyAnonymization();
+
+            const nameParts = originalFileName.split('.');
+            nameParts.pop();
+            const baseName = nameParts.join('.');
+
+            const mappingRows = [];
+            Object.keys(globalMappingTable).forEach(sheetCol => {
+                const mapObj = globalMappingTable[sheetCol];
+                Object.keys(mapObj).forEach(orig => {
+                    mappingRows.push({
+                        "欄位 (Sheet.Column)": sheetCol,
+                        "原始真實數據 (Original)": orig,
+                        "處理後數據 (Anonymized)": mapObj[orig]
+                    });
+                });
+            });
+
+            if (mappingRows.length > 0) {
+                const mappingWB = XLSX.utils.book_new();
+                const mappingWS = XLSX.utils.json_to_sheet(mappingRows);
+                XLSX.utils.book_append_sheet(mappingWB, mappingWS, "Mapping_Table");
+                XLSX.writeFile(mappingWB, `${baseName}_MappingTable.xlsx`);
+                showToast('對照表 (Mapping Table) 已順利下載！', 'success');
+            } else {
+                showToast('目前未產生任何映射記錄 (例如未設定假名化或微擾欄位)', 'warning');
+            }
+        }
+
+        // Export Processed Files & Mapping Tables All-in-one
+        function exportProcessedData() {
+            exportDataOnly();
+            const exportMapping = document.getElementById('chkExportMapping').checked;
+            if (exportMapping) {
+                setTimeout(() => {
+                    exportMappingOnly();
+                }, 600);
+            }
+        }
+
+        // Helper: File Download Blob
+        function downloadBlob(content, filename, contentType) {
+            const blob = new Blob([content], { type: contentType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 0);
+        }
+
+        // Reset App State
+        function resetApp() {
+            rawWorkbook = null;
+            sheetsData = {};
+            columnConfigs = {};
+            processedWorkbook = null;
+            globalMappingTable = {};
+            fileInput.value = "";
+
+            uploadSection.classList.remove('hidden');
+            workspaceSection.classList.add('hidden');
+            document.getElementById('fileStatusBadge').classList.add('hidden');
+            document.getElementById('btnReset').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
