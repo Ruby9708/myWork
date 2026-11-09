@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>部門階層架構與人員異動管理系統</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f8fafc;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* Drag and Drop visual indicator */
+        .drag-over {
+            border: 2px dashed #3b82f6 !important;
+            background-color: #eff6ff !important;
+        }
+        .dragging {
+            opacity: 0.4;
+            transform: scale(0.96);
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden text-slate-800">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-slate-900 text-white px-6 py-3.5 flex justify-between items-center shadow-md shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="bg-blue-600 p-2.5 rounded-xl flex items-center justify-center text-white shadow-sm">
+                <i class="fa-solid fa-sitemap text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-wide">組織部門階層與人員異動管理</h1>
+                <p class="text-xs text-slate-400">支援拖曳微調部門/職階、異動即時履歷與線上 Google Sheet 同步</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="syncDataFromCloud()" id="btn-sync" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg text-sm transition shadow-sm flex items-center gap-2">
+                <i class="fa-solid fa-rotate" id="sync-icon"></i> <span>同步線上資料</span>
+            </button>
+            <button onclick="reloadOriginalData()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition flex items-center gap-2 border border-slate-700">
+                <i class="fa-solid fa-rotate-left"></i> 重置數據
+            </button>
+            <button onclick="openAddModal()" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg text-sm transition shadow-sm flex items-center gap-2">
+                <i class="fa-solid fa-plus"></i> 新增成員
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace Area -->
+    <div class="flex-1 flex overflow-hidden">
+
+        <!-- Sidebar: Control Panel & Change Logs -->
+        <aside class="w-96 bg-white border-r border-slate-200 flex flex-col shrink-0 z-10 shadow-sm">
+            <!-- Sidebar Navigation Tabs -->
+            <div class="flex border-b border-slate-200 bg-slate-50">
+                <button id="tab-log-btn" onclick="switchTab('log')" class="flex-1 py-3 text-sm font-semibold border-b-2 border-blue-600 text-blue-600 flex items-center justify-center gap-2 transition">
+                    <i class="fa-solid fa-list-check"></i> 異動紀錄 <span id="change-count" class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">0</span>
+                </button>
+                <button id="tab-filter-btn" onclick="switchTab('filter')" class="flex-1 py-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center justify-center gap-2 transition">
+                    <i class="fa-solid fa-filter"></i> 搜尋與篩選
+                </button>
+            </div>
+
+            <!-- Tab 1: Logs Panel -->
+            <div id="tab-log" class="flex-1 flex flex-col overflow-hidden p-4">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">異動紀錄清單</h3>
+                    <div class="flex gap-1.5">
+                        <button onclick="copyChangeLogs()" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-medium transition flex items-center gap-1">
+                            <i class="fa-regular fa-copy"></i> 複製文字
+                        </button>
+                        <button onclick="exportChangeLogsCSV()" class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-xs font-medium transition flex items-center gap-1 border border-emerald-200">
+                            <i class="fa-solid fa-file-csv"></i> 匯出 CSV
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Log Items Container -->
+                <div id="log-list" class="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                    <div class="text-center text-slate-400 py-12 text-sm">
+                        <i class="fa-solid fa-right-left text-3xl mb-2 text-slate-300"></i>
+                        <p class="font-medium">尚無異動紀錄</p>
+                        <p class="text-xs text-slate-400 mt-1">您可以隨時拖曳人員卡片調整部門或職級</p>
+                    </div>
+                </div>
+
+                <!-- Footer Summary -->
+                <div class="pt-3 mt-auto border-t border-slate-100 flex justify-between items-center text-xs">
+                    <span class="text-slate-500" id="log-summary">共 0 項異動</span>
+                    <button onclick="clearLogs()" class="text-rose-600 hover:text-rose-800 transition">清空紀錄</button>
+                </div>
+            </div>
+
+            <!-- Tab 2: Filter Panel -->
+            <div id="tab-filter" class="flex-1 overflow-y-auto p-4 space-y-4 hidden">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">搜尋成員姓名 / 工號 / 職稱</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+                        <input type="text" id="search-input" oninput="renderHierarchy()" placeholder="輸入關鍵字..." class="w-full pl-9 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">部門篩選</label>
+                    <select id="filter-dept" onchange="renderHierarchy()" class="w-full py-1.5 px-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="ALL">全部部門</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">職級篩選</label>
+                    <select id="filter-level" onchange="renderHierarchy()" class="w-full py-1.5 px-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="ALL">全部職級</option>
+                    </select>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100">
+                    <div class="bg-blue-50 p-3 rounded-lg border border-blue-100 text-xs text-blue-900 leading-relaxed">
+                        <i class="fa-solid fa-circle-info text-blue-600 mr-1"></i> <strong>操作小秘訣：</strong><br>
+                        1. 拖曳成員卡片到其他<strong>「部門卡片」</strong>可直接變更所屬部門。<br>
+                        2. 拖曳成員卡片到對應的<strong>「職級區域」</strong>可同時調整職級。<br>
+                        3. 調整後的結果可一鍵複製為文字報表或匯出異動檔。
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Display Canvas -->
+        <main class="flex-1 flex flex-col bg-slate-100 overflow-hidden">
+
+            <!-- Sub Toolbar -->
+            <div class="bg-white px-6 py-2.5 border-b border-slate-200 flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-4">
+                    <div id="data-status" class="text-xs font-medium text-slate-600 flex items-center gap-2">
+                        <span id="status-indicator" class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                        <span id="data-count-text">資料庫狀態：就緒</span>
+                    </div>
+                    <div class="h-4 w-px bg-slate-200"></div>
+                    <div class="text-xs text-slate-500">
+                        檢視模式：<span class="font-semibold text-slate-700">階層式部門組織圖</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <button onclick="collapseAllDepts()" class="px-2.5 py-1 text-xs border border-slate-300 rounded hover:bg-slate-50 text-slate-600 transition">
+                        <i class="fa-solid fa-compress mr-1"></i> 全部收合
+                    </button>
+                    <button onclick="expandAllDepts()" class="px-2.5 py-1 text-xs border border-slate-300 rounded hover:bg-slate-50 text-slate-600 transition">
+                        <i class="fa-solid fa-expand mr-1"></i> 全部展開
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scrollable Hierarchy Chart Canvas -->
+            <div class="flex-1 overflow-auto p-6" id="hierarchy-canvas">
+                <div id="hierarchy-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start pb-20">
+                    <!-- Dynamic Department Cards -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal: Add / Edit Member -->
+    <div id="member-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                <h3 id="modal-title" class="font-bold text-slate-800">編輯成員資訊</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+            </div>
+            <form id="member-form" onsubmit="saveMember(event)" class="p-6 space-y-4">
+                <input type="hidden" id="modal-emp-id">
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">姓名 *</label>
+                    <input type="text" id="modal-name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">部門 *</label>
+                    <input type="text" id="modal-dept" required list="dept-suggestions" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <datalist id="dept-suggestions"></datalist>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">職務 / 職稱 *</label>
+                    <input type="text" id="modal-title-input" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">職級歸屬 *</label>
+                    <select id="modal-level" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <option value="高階主管">高階主管 (Executive)</option>
+                        <option value="中階主管">中階主管 (Manager)</option>
+                        <option value="基層主管">基層主管 (Supervisor)</option>
+                        <option value="資深專員">資深專員 (Senior Staff)</option>
+                        <option value="專員">專員 (Staff)</option>
+                        <option value="助理">助理 (Assistant)</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg text-sm hover:bg-slate-50 font-medium">取消</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-500 font-medium shadow-sm">儲存變更</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
+
+    <!-- JavaScript Core Logic -->
+    <script>
+        // Target Google Sheet CSV URL
+        const DEFAULT_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQEJm1VZsBn0qrLg0bFs3jvns2fYDWWOiARuGfXfMk5mawhq5fLrHKm5HhEm8ZpaINqOGwWxWgme65t/pub?output=csv";
+
+        // Global State Variables
+        let membersData = [];
+        let changeLogs = [];
+        let draggedMemberId = null;
+        const collapsedDepts = new Set();
+
+        // Standard Rank Order
+        const LEVEL_ORDER = {
+            "高階主管": 1,
+            "中階主管": 2,
+            "基層主管": 3,
+            "資深專員": 4,
+            "專員": 5,
+            "助理": 6
+        };
+
+        // Department Aesthetic Theme Palette
+        const DEPT_COLORS = [
+            { border: 'border-blue-200', bg: 'bg-blue-500', badge: 'bg-blue-100 text-blue-700' },
+            { border: 'border-emerald-200', bg: 'bg-emerald-500', badge: 'bg-emerald-100 text-emerald-700' },
+            { border: 'border-indigo-200', bg: 'bg-indigo-500', badge: 'bg-indigo-100 text-indigo-700' },
+            { border: 'border-amber-200', bg: 'bg-amber-500', badge: 'bg-amber-100 text-amber-700' },
+            { border: 'border-purple-200', bg: 'bg-purple-500', badge: 'bg-purple-100 text-purple-700' },
+            { border: 'border-rose-200', bg: 'bg-rose-500', badge: 'bg-rose-100 text-rose-700' },
+            { border: 'border-teal-200', bg: 'bg-teal-500', badge: 'bg-teal-100 text-teal-700' },
+            { border: 'border-cyan-200', bg: 'bg-cyan-500', badge: 'bg-cyan-100 text-cyan-700' }
+        ];
+
+        // Automatic load on startup
+        window.onload = function () {
+            loadInitialCSVData();
+        };
+
+        // Fetch & Parse Online CSV Data
+        function loadInitialCSVData(isSyncing = false) {
+            const statusIndicator = document.getElementById('status-indicator');
+            const syncIcon = document.getElementById('sync-icon');
+            
+            if (statusIndicator) statusIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse inline-block";
+            if (syncIcon) syncIcon.classList.add('fa-spin');
+
+            showToast(isSyncing ? "正在同步 Google Sheets 線上數據..." : "正在讀取組織試算表...", "info");
+            
+            // Bypass potential browser cache using dynamic timestamp parameter
+            const requestUrl = `${DEFAULT_CSV_URL}&_t=${Date.now()}`;
+
+            Papa.parse(requestUrl, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (statusIndicator) statusIndicator.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block";
+                    if (syncIcon) syncIcon.classList.remove('fa-spin');
+                    
+                    if (results.data && results.data.length > 0) {
+                        normalizeData(results.data);
+                        renderHierarchy();
+                        updateFilterOptions();
+                        showToast(isSyncing ? "線上資料同步完成！" : "組織架構載入成功！", "success");
+                    } else {
+                        showToast("無法解析有效資料，改為讀取預設範例", "warning");
+                        loadFallbackData();
+                    }
+                },
+                error: function(err) {
+                    if (statusIndicator) statusIndicator.className = "w-2.5 h-2.5 rounded-full bg-rose-500 inline-block";
+                    if (syncIcon) syncIcon.classList.remove('fa-spin');
+                    console.error("CSV Fetch Error:", err);
+                    showToast("同步線上 CSV 失敗，載入備用測試資料", "warning");
+                    loadFallbackData();
+                }
+            });
+        }
+
+        // Dedicated Cloud Sync Handler
+        function syncDataFromCloud() {
+            if (changeLogs.length > 0) {
+                if (!confirm("注意：同步線上資料將重新取得最新表格，未匯出的異動紀錄將會重置，確定要進行同步嗎？")) {
+                    return;
+                }
+            }
+            changeLogs = [];
+            renderLogs();
+            loadInitialCSVData(true);
+        }
+
+        // Fallback Mock Data if CSV Fetch fails
+        function loadFallbackData() {
+            const fallback = [
+                { "員工編號": "EMP001", "姓名": "張偉", "部門": "總經理室", "職務": "總經理", "職級": "高階主管" },
+                { "員工編號": "EMP002", "姓名": "林淑芬", "部門": "人力資源部", "職務": "HR經理", "職級": "中階主管" },
+                { "員工編號": "EMP003", "姓名": "陳冠宇", "部門": "人力資源部", "職務": "資深HR專員", "職級": "資深專員" },
+                { "員工編號": "EMP004", "姓名": "黃雅婷", "部門": "資訊技術部", "職務": "技術總監", "職級": "高階主管" },
+                { "員工編號": "EMP005", "姓名": "劉建宏", "部門": "資訊技術部", "職務": "全端工程師", "職級": "資深專員" },
+                { "員工編號": "EMP006", "姓名": "趙美玲", "部門": "資訊技術部", "職務": "助理工程師", "職級": "專員" },
+                { "員工編號": "EMP007", "姓名": "吳志強", "部門": "業務拓展部", "職務": "業務總監", "職級": "中階主管" },
+                { "員工編號": "EMP008", "姓名": "蔡佩珊", "部門": "業務拓展部", "職務": "資深業務專員", "職級": "資深專員" }
+            ];
+            normalizeData(fallback);
+            renderHierarchy();
+            updateFilterOptions();
+        }
+
+        // Flexible key matching & data normalization logic
+        function normalizeData(rawList) {
+            membersData = rawList.map((item, index) => {
+                const cleanedItem = {};
+                // Remove UTF-8 BOM markers and clean whitespace
+                Object.keys(item).forEach(key => {
+                    const cleanKey = key.replace(/^\ufeff/, '').trim();
+                    cleanedItem[cleanKey] = item[key] ? String(item[key]).trim() : '';
+                });
+
+                // Robust Field Extraction
+                const id = getFieldValue(cleanedItem, ["員工編號", "編號", "工號", "ID"]) || `EMP-${1000 + index}`;
+                const name = getFieldValue(cleanedItem, ["姓名", "員工姓名", "Name"]) || "未命名成員";
+                const department = getFieldValue(cleanedItem, ["部門", "處別", "單位", "Department", "Dept"]) || "未分派部門";
+                let title = getFieldValue(cleanedItem, ["職稱", "職務", "職位", "Title", "Position"]) || "專員";
+                let level = getFieldValue(cleanedItem, ["職級", "職等", "階層", "職階", "Level", "Rank"]) || "";
+
+                if (!level) {
+                    level = standardizeLevel(title);
+                } else {
+                    level = standardizeLevel(level, title);
+                }
+
+                return { id, name, department, title, level };
+            });
+        }
+
+        // Helper to query multiple alternative key names
+        function getFieldValue(obj, keys) {
+            for (const key of Object.keys(obj)) {
+                for (const targetKey of keys) {
+                    if (key === targetKey || key.toLowerCase() === targetKey.toLowerCase()) {
+                        if (obj[key]) return obj[key];
+                    }
+                }
+            }
+            return "";
+        }
+
+        // Standardize Levels into fixed category groups
+        function standardizeLevel(lvlStr, titleStr = "") {
+            const combined = (lvlStr + " " + titleStr).toLowerCase();
+            if (combined.includes("高階") || combined.includes("總監") || combined.includes("副總") || combined.includes("執行長") || combined.includes("總經理") || combined.includes("ceo") || combined.includes("vp")) return "高階主管";
+            if (combined.includes("中階") || combined.includes("經理") || combined.includes("協理") || combined.includes("處長") || combined.includes("部長")) return "中階主管";
+            if (combined.includes("基層") || combined.includes("課長") || combined.includes("組長") || combined.includes("主任") || combined.includes("主管")) return "基層主管";
+            if (combined.includes("資深") || combined.includes("高級") || combined.includes("senior")) return "資深專員";
+            if (combined.includes("助理") || combined.includes("初階") || combined.includes("實習") || combined.includes("assistant")) return "助理";
+            return "專員";
+        }
+
+        // Primary UI Render Function
+        function renderHierarchy() {
+            const container = document.getElementById('hierarchy-container');
+            container.innerHTML = '';
+
+            const keyword = document.getElementById('search-input')?.value.trim().toLowerCase() || '';
+            const selectedDept = document.getElementById('filter-dept')?.value || 'ALL';
+            const selectedLevel = document.getElementById('filter-level')?.value || 'ALL';
+
+            // Filter members based on user query
+            const filtered = membersData.filter(m => {
+                const matchKeyword = !keyword || m.name.toLowerCase().includes(keyword) || m.id.toLowerCase().includes(keyword) || m.title.toLowerCase().includes(keyword);
+                const matchDept = selectedDept === 'ALL' || m.department === selectedDept;
+                const matchLevel = selectedLevel === 'ALL' || m.level === selectedLevel;
+                return matchKeyword && matchDept && matchLevel;
+            });
+
+            // Group Members by Department
+            const deptsMap = {};
+            filtered.forEach(m => {
+                if (!deptsMap[m.department]) deptsMap[m.department] = [];
+                deptsMap[m.department].push(m);
+            });
+
+            const deptNames = Object.keys(deptsMap);
+            document.getElementById('data-count-text').innerText = `目前顯示 ${deptNames.length} 個部門，共 ${filtered.length} 位人員`;
+
+            if (deptNames.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full py-20 text-center text-slate-400">
+                        <i class="fa-solid fa-users-slash text-4xl mb-3 text-slate-300"></i>
+                        <p class="text-base font-medium">沒有查找到符合條件的成員數據</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Construct Card for each Department
+            deptNames.forEach((deptName, idx) => {
+                const deptMembers = deptsMap[deptName];
+                const theme = DEPT_COLORS[idx % DEPT_COLORS.length];
+                const isCollapsed = collapsedDepts.has(deptName);
+
+                // Group by Level inside Department
+                const levelGrouped = {};
+                deptMembers.forEach(m => {
+                    if (!levelGrouped[m.level]) levelGrouped[m.level] = [];
+                    levelGrouped[m.level].push(m);
+                });
+
+                const deptCard = document.createElement('div');
+                deptCard.className = `bg-white rounded-xl shadow-sm border ${theme.border} flex flex-col overflow-hidden transition-all duration-200 hover:shadow-md`;
+                
+                deptCard.innerHTML = `
+                    <!-- Department Header -->
+                    <div class="px-4 py-3 bg-slate-50 border-b ${theme.border} flex justify-between items-center cursor-pointer select-none" onclick="toggleDeptCollapse('${deptName}')">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-3 h-3 rounded-full ${theme.bg}"></span>
+                            <h2 class="font-bold text-slate-800 text-sm">${deptName}</h2>
+                            <span class="text-xs px-2 py-0.5 rounded-full font-semibold ${theme.badge}">${deptMembers.length} 人</span>
+                        </div>
+                        <div class="text-slate-400 hover:text-slate-600 transition">
+                            <i class="fa-solid ${isCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'} text-xs"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- Department Content Dropzone -->
+                    <div id="dept-body-${deptName}" class="p-3 space-y-3 flex-1 ${isCollapsed ? 'hidden' : 'block'}" 
+                         ondragover="handleDragOver(event)" 
+                         ondragleave="handleDragLeave(event)" 
+                         ondrop="handleDrop(event, '${deptName}')">
+                        ${renderLevelGroups(levelGrouped, theme)}
+                    </div>
+                `;
+
+                container.appendChild(deptCard);
+            });
+        }
+
+        // Render subgroups inside department by standard level ranks
+        function renderLevelGroups(levelGrouped, theme) {
+            const standardLevels = ["高階主管", "中階主管", "基層主管", "資深專員", "專員", "助理"];
+            let html = '';
+
+            standardLevels.forEach(lvl => {
+                const members = levelGrouped[lvl] || [];
+                if (members.length > 0) {
+                    members.sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'));
+                    html += `
+                        <div class="bg-slate-50/80 rounded-lg p-2.5 border border-slate-200/60 transition" 
+                             ondragover="handleDragOver(event)" 
+                             ondragleave="handleDragLeave(event)" 
+                             ondrop="handleDrop(event, null, '${lvl}')">
+                            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+                                <span><i class="fa-solid fa-layer-group mr-1.5 text-slate-400"></i> ${lvl}</span>
+                                <span class="text-[10px] bg-slate-200/80 text-slate-600 px-1.5 py-0.2 rounded font-semibold">${members.length}</span>
+                            </div>
+                            <div class="space-y-2">
+                                ${members.map(m => renderMemberCard(m, theme)).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            return html || `<div class="p-4 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-lg">尚無成員（可拖曳人員至此）</div>`;
+        }
+
+        // Render draggable member card
+        function renderMemberCard(m, theme) {
+            return `
+                <div id="card-${m.id}" 
+                     draggable="true" 
+                     ondragstart="handleDragStart(event, '${m.id}')" 
+                     ondragend="handleDragEnd(event)"
+                     class="bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm hover:shadow hover:border-blue-400 transition cursor-grab active:cursor-grabbing group flex justify-between items-center">
+                    <div class="flex items-center space-x-2.5">
+                        <div class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-600 text-xs shrink-0 group-hover:bg-blue-50 group-hover:text-blue-600 transition">
+                            ${m.name.charAt(0)}
+                        </div>
+                        <div>
+                            <div class="font-semibold text-xs text-slate-800 flex items-center gap-1.5">
+                                ${m.name}
+                                <span class="text-[10px] text-slate-400 font-mono">(${m.id})</span>
+                            </div>
+                            <div class="text-[11px] text-slate-500 font-medium">
+                                ${m.title}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center opacity-0 group-hover:opacity-100 transition">
+                        <button onclick="openEditModal('${m.id}')" class="p-1 text-slate-400 hover:text-blue-600 rounded transition" title="編輯人員">
+                            <i class="fa-solid fa-pen-to-square text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Update Filter Selector Lists
+        function updateFilterOptions() {
+            const deptSelect = document.getElementById('filter-dept');
+            const suggestions = document.getElementById('dept-suggestions');
+            
+            const depts = Array.from(new Set(membersData.map(m => m.department)));
+            
+            if (deptSelect) {
+                deptSelect.innerHTML = '<option value="ALL">全部部門</option>' + 
+                    depts.map(d => `<option value="${d}">${d}</option>`).join('');
+            }
+
+            if (suggestions) {
+                suggestions.innerHTML = depts.map(d => `<option value="${d}">`).join('');
+            }
+        }
+
+        // --- Drag & Drop Operations ---
+        function handleDragStart(e, memberId) {
+            draggedMemberId = memberId;
+            e.dataTransfer.setData('text/plain', memberId);
+            e.currentTarget.classList.add('dragging');
+            e.stopPropagation();
+        }
+
+        function handleDragEnd(e) {
+            e.currentTarget.classList.remove('dragging');
+            draggedMemberId = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.currentTarget.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.currentTarget.classList.remove('drag-over');
+        }
+
+        function handleDrop(e, targetDept, targetLevel = null) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.currentTarget.classList.remove('drag-over');
+
+            if (!draggedMemberId) return;
+
+            const member = membersData.find(m => m.id === draggedMemberId);
+            if (!member) return;
+
+            const oldDept = member.department;
+            const oldLevel = member.level;
+            
+            const newDept = targetDept || oldDept;
+            const newLevel = targetLevel || oldLevel;
+
+            if (oldDept === newDept && oldLevel === newLevel) return;
+
+            // Apply change
+            member.department = newDept;
+            member.level = newLevel;
+
+            // Log entry
+            logChange(member, oldDept, newDept, oldLevel, newLevel);
+
+            showToast(`已成功將 ${member.name} 調整至 [${newDept}]`, "success");
+
+            renderHierarchy();
+            updateFilterOptions();
+        }
+
+        // --- Log Management ---
+        function logChange(member, oldDept, newDept, oldLevel, newLevel) {
+            const timestamp = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+            const logItem = {
+                id: Date.now(),
+                timestamp,
+                empId: member.id,
+                name: member.name,
+                title: member.title,
+                oldDept,
+                newDept,
+                oldLevel,
+                newLevel
+            };
+
+            changeLogs.unshift(logItem);
+            renderLogs();
+        }
+
+        function renderLogs() {
+            const logList = document.getElementById('log-list');
+            const countBadge = document.getElementById('change-count');
+            const summaryText = document.getElementById('log-summary');
+
+            if (countBadge) countBadge.innerText = changeLogs.length;
+            if (summaryText) summaryText.innerText = `共 ${changeLogs.length} 項異動`;
+
+            if (changeLogs.length === 0) {
+                logList.innerHTML = `
+                    <div class="text-center text-slate-400 py-12 text-sm">
+                        <i class="fa-solid fa-right-left text-3xl mb-2 text-slate-300"></i>
+                        <p class="font-medium">尚無異動紀錄</p>
+                        <p class="text-xs text-slate-400 mt-1">您可以隨時拖曳人員卡片調整部門或職級</p>
+                    </div>
+                `;
+                return;
+            }
+
+            logList.innerHTML = changeLogs.map(log => {
+                const isDeptChange = log.oldDept !== log.newDept;
+                const isLevelChange = log.oldLevel !== log.newLevel;
+
+                return `
+                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-1.5">
+                        <div class="flex justify-between items-center font-semibold text-slate-700">
+                            <span class="text-blue-600">${log.name} <span class="text-slate-400 font-normal">(${log.empId})</span></span>
+                            <span class="text-[10px] text-slate-400">${log.timestamp}</span>
+                        </div>
+                        
+                        ${isDeptChange ? `
+                            <div class="flex items-center gap-1.5 text-slate-600">
+                                <span class="text-slate-400">部門:</span>
+                                <span class="px-1.5 py-0.5 bg-slate-200 rounded">${log.oldDept}</span>
+                                <i class="fa-solid fa-arrow-right text-[10px] text-blue-500"></i>
+                                <span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 font-semibold rounded">${log.newDept}</span>
+                            </div>
+                        ` : ''}
+
+                        ${isLevelChange ? `
+                            <div class="flex items-center gap-1.5 text-slate-600">
+                                <span class="text-slate-400">職級:</span>
+                                <span class="px-1.5 py-0.5 bg-slate-200 rounded">${log.oldLevel}</span>
+                                <i class="fa-solid fa-arrow-right text-[10px] text-blue-500"></i>
+                                <span class="px-1.5 py-0.5 bg-amber-100 text-amber-800 font-semibold rounded">${log.newLevel}</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function clearLogs() {
+            if (changeLogs.length === 0) return;
+            changeLogs = [];
+            renderLogs();
+            showToast("已清空異動紀錄", "info");
+        }
+
+        // Copy Change Logs formatted for Email/Document
+        function copyChangeLogs() {
+            if (changeLogs.length === 0) {
+                showToast("目前沒有異動紀錄可供複製", "warning");
+                return;
+            }
+
+            let text = `【組織人員異動申請單】\n生成時間：${new Date().toLocaleString('zh-TW')}\n\n`;
+            text += `異動明細列表：\n`;
+
+            changeLogs.forEach((log, i) => {
+                text += `${i + 1}. [${log.empId}] ${log.name} (${log.title})\n`;
+                if (log.oldDept !== log.newDept) {
+                    text += `   - 部門調動：${log.oldDept} ➔ ${log.newDept}\n`;
+                }
+                if (log.oldLevel !== log.newLevel) {
+                    text += `   - 職級調整：${log.oldLevel} ➔ ${log.newLevel}\n`;
+                }
+            });
+
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast("異動紀錄已成功複製至剪貼簿！", "success");
+            } catch (err) {
+                showToast("複製失敗", "warning");
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // Export Change Logs CSV
+        function exportChangeLogsCSV() {
+            if (changeLogs.length === 0) {
+                showToast("目前尚無異動紀錄可匯出", "warning");
+                return;
+            }
+
+            const exportData = changeLogs.map(log => ({
+                "時間": log.timestamp,
+                "員工編號": log.empId,
+                "姓名": log.name,
+                "職稱": log.title,
+                "原部門": log.oldDept,
+                "新部門": log.newDept,
+                "原職級": log.oldLevel,
+                "新職級": log.newLevel
+            }));
+
+            const csv = Papa.unparse(exportData);
+            const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `組織人員異動紀錄表_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            showToast("已成功匯出 CSV 檔", "success");
+        }
+
+        // Reset Data
+        function reloadOriginalData() {
+            if (confirm("確定要重置為預設原始資料嗎？所有未匯出的調動紀錄將會清除。")) {
+                loadInitialCSVData();
+                changeLogs = [];
+                renderLogs();
+            }
+        }
+
+        // --- Modal & Form Logic ---
+        function openAddModal() {
+            document.getElementById('modal-title').innerText = "新增人員";
+            document.getElementById('modal-emp-id').value = "";
+            document.getElementById('modal-name').value = "";
+            document.getElementById('modal-dept').value = "";
+            document.getElementById('modal-title-input').value = "";
+            document.getElementById('modal-level').value = "專員";
+            document.getElementById('member-modal').classList.remove('hidden');
+        }
+
+        function openEditModal(empId) {
+            const member = membersData.find(m => m.id === empId);
+            if (!member) return;
+
+            document.getElementById('modal-title').innerText = "編輯人員資訊";
+            document.getElementById('modal-emp-id').value = member.id;
+            document.getElementById('modal-name').value = member.name;
+            document.getElementById('modal-dept').value = member.department;
+            document.getElementById('modal-title-input').value = member.title;
+            document.getElementById('modal-level').value = member.level;
+            document.getElementById('member-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('member-modal').classList.add('hidden');
+        }
+
+        function saveMember(e) {
+            e.preventDefault();
+            const id = document.getElementById('modal-emp-id').value;
+            const name = document.getElementById('modal-name').value.trim();
+            const dept = document.getElementById('modal-dept').value.trim();
+            const title = document.getElementById('modal-title-input').value.trim();
+            const level = document.getElementById('modal-level').value;
+
+            if (id) {
+                const member = membersData.find(m => m.id === id);
+                if (member) {
+                    const oldDept = member.department;
+                    const oldLevel = member.level;
+
+                    member.name = name;
+                    member.department = dept;
+                    member.title = title;
+                    member.level = level;
+
+                    if (oldDept !== dept || oldLevel !== level) {
+                        logChange(member, oldDept, dept, oldLevel, level);
+                    }
+                }
+            } else {
+                const newId = `EMP-${1000 + membersData.length + 1}`;
+                const newMember = { id: newId, name, department: dept, title, level };
+                membersData.push(newMember);
+                logChange(newMember, "【新進人員】", dept, "-", level);
+            }
+
+            closeModal();
+            renderHierarchy();
+            updateFilterOptions();
+            showToast("人員資料儲存完成！", "success");
+        }
+
+        // --- Collapse Controls & Utilities ---
+        function toggleDeptCollapse(deptName) {
+            if (collapsedDepts.has(deptName)) {
+                collapsedDepts.delete(deptName);
+            } else {
+                collapsedDepts.add(deptName);
+            }
+            renderHierarchy();
+        }
+
+        function collapseAllDepts() {
+            membersData.forEach(m => collapsedDepts.add(m.department));
+            renderHierarchy();
+        }
+
+        function expandAllDepts() {
+            collapsedDepts.clear();
+            renderHierarchy();
+        }
+
+        function switchTab(tabName) {
+            const logTab = document.getElementById('tab-log');
+            const filterTab = document.getElementById('tab-filter');
+            const logBtn = document.getElementById('tab-log-btn');
+            const filterBtn = document.getElementById('tab-filter-btn');
+
+            if (tabName === 'log') {
+                logTab.classList.remove('hidden');
+                filterTab.classList.add('hidden');
+
+                logBtn.className = "flex-1 py-3 text-sm font-semibold border-b-2 border-blue-600 text-blue-600 flex items-center justify-center gap-2 transition";
+                filterBtn.className = "flex-1 py-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center justify-center gap-2 transition";
+            } else {
+                logTab.classList.add('hidden');
+                filterTab.classList.remove('hidden');
+
+                filterBtn.className = "flex-1 py-3 text-sm font-semibold border-b-2 border-blue-600 text-blue-600 flex items-center justify-center gap-2 transition";
+                logBtn.className = "flex-1 py-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center justify-center gap-2 transition";
+            }
+        }
+
+        // Toast Messages
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const bgColors = {
+                success: "bg-emerald-600 text-white",
+                warning: "bg-amber-500 text-white",
+                info: "bg-slate-800 text-white"
+            };
+
+            toast.className = `px-4 py-3 rounded-lg shadow-lg text-xs font-medium flex items-center gap-2 transition-all duration-300 transform translate-y-2 ${bgColors[type] || bgColors.info}`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-info"></i> <span>${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
