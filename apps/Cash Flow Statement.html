@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>公開資訊觀測站 - 合併現金流量表智慧分析儀表板</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        profit: '#10b981', // 綠色/收益
+                        loss: '#ef4444',   // 紅色/虧損
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen pb-12 antialiased">
+
+    <!-- Header Section -->
+    <header class="border-b border-slate-800 bg-slate-900/80 sticky top-0 z-50 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-gradient-to-tr from-sky-500 to-indigo-600 p-2.5 rounded-xl shadow-lg shadow-sky-500/20">
+                    <i class="fa-solid fa-chart-pie text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-white tracking-wide flex items-center gap-2">
+                        現金流量表智慧分析系統
+                        <span class="text-xs font-normal px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">MOPS 通用版</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">公開資訊觀測站 · 財務數據即時解析</p>
+                </div>
+            </div>
+            <div id="header-meta" class="hidden md:flex items-center space-x-6 text-sm text-slate-400">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-regular fa-building text-sky-400"></i>
+                    <span id="company-name" class="font-medium text-slate-200">未載入公司</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <i class="fa-regular fa-calendar-alt text-sky-400"></i>
+                    <span id="report-period" class="font-medium text-slate-200">--</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-8">
+
+        <!-- Input Section -->
+        <section class="glass-card rounded-2xl p-6 shadow-xl relative overflow-hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-file-import text-sky-400"></i> 資料匯入與解析
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">請直接粘貼公開資訊觀測站觀測頁面的表格文字，或上傳 CSV 檔案。</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="loadSampleData()" class="px-3.5 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1.5 shadow-sm">
+                        <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> 載入範例資料 (台積電)
+                    </button>
+                    <button onclick="clearData()" class="px-3.5 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border border-slate-700 hover:border-rose-800/50 transition">
+                        <i class="fa-solid fa-trash-can"></i> 清除
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabs/Input Toggle -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Dropzone & Raw Text Input -->
+                <div class="lg:col-span-3 space-y-4">
+                    <div id="drop-zone" class="border-2 border-dashed border-slate-700 hover:border-sky-500 rounded-xl p-4 transition bg-slate-900/50 text-center cursor-pointer group">
+                        <input type="file" id="file-input" accept=".csv,.txt" class="hidden" onchange="handleFileSelect(event)">
+                        <div onclick="document.getElementById('file-input').click()" class="space-y-2">
+                            <i class="fa-solid fa-cloud-arrow-up text-3xl text-slate-500 group-hover:text-sky-400 transition"></i>
+                            <p class="text-xs text-slate-300">點擊選擇檔案 或 將觀測站匯出的 CSV/TXT 檔案拖曳至此處</p>
+                        </div>
+                    </div>
+
+                    <div class="relative">
+                        <textarea id="raw-input" rows="6" placeholder="請將觀測站「合併現金流量表」的整張表格內容複製並貼上於此... (範例格式: 會計項目 \t 當期金額 \t 比較期金額)" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-4 text-xs font-mono text-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none resize-y"></textarea>
+                        <button onclick="parseRawData()" class="absolute bottom-4 right-4 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white text-sm font-semibold px-5 py-2 rounded-lg shadow-lg shadow-sky-500/25 transition flex items-center gap-2">
+                            <i class="fa-solid fa-bolt"></i> 開始解析數據
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- KPI Cards Section -->
+        <section id="kpi-section" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 opacity-50 pointer-events-none transition-all duration-500">
+            <!-- OCF Card -->
+            <div class="glass-card p-5 rounded-2xl relative overflow-hidden group hover:border-slate-600 transition">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-semibold text-slate-400 tracking-wider uppercase">營業活動現金流 (OCF)</span>
+                    <span class="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg text-xs"><i class="fa-solid fa-industry"></i></span>
+                </div>
+                <div class="mt-3">
+                    <div id="kpi-ocf" class="text-2xl font-bold text-white font-mono">--</div>
+                    <div class="flex items-center justify-between mt-2 text-xs">
+                        <span class="text-slate-500">YoY 增減額</span>
+                        <span id="kpi-ocf-yoy" class="font-medium font-mono text-slate-400">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ICF Card -->
+            <div class="glass-card p-5 rounded-2xl relative overflow-hidden group hover:border-slate-600 transition">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-semibold text-slate-400 tracking-wider uppercase">投資活動現金流 (ICF)</span>
+                    <span class="p-2 bg-sky-500/10 text-sky-400 rounded-lg text-xs"><i class="fa-solid fa-chart-line"></i></span>
+                </div>
+                <div class="mt-3">
+                    <div id="kpi-icf" class="text-2xl font-bold text-white font-mono">--</div>
+                    <div class="flex items-center justify-between mt-2 text-xs">
+                        <span class="text-slate-500">YoY 增減額</span>
+                        <span id="kpi-icf-yoy" class="font-medium font-mono text-slate-400">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FCF Card -->
+            <div class="glass-card p-5 rounded-2xl relative overflow-hidden group hover:border-slate-600 transition">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-semibold text-slate-400 tracking-wider uppercase">籌資活動現金流 (FCF)</span>
+                    <span class="p-2 bg-purple-500/10 text-purple-400 rounded-lg text-xs"><i class="fa-solid fa-building-columns"></i></span>
+                </div>
+                <div class="mt-3">
+                    <div id="kpi-fcf" class="text-2xl font-bold text-white font-mono">--</div>
+                    <div class="flex items-center justify-between mt-2 text-xs">
+                        <span class="text-slate-500">YoY 增減額</span>
+                        <span id="kpi-fcf-yoy" class="font-medium font-mono text-slate-400">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Free Cash Flow Card -->
+            <div class="glass-card p-5 rounded-2xl relative overflow-hidden border-sky-500/30 bg-gradient-to-br from-slate-900/80 via-slate-900/50 to-sky-950/30 group hover:border-sky-500/50 transition">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-bold text-sky-400 tracking-wider uppercase">自由現金流量 (Free CF)</span>
+                    <span class="p-2 bg-sky-400/10 text-sky-300 rounded-lg text-xs"><i class="fa-solid fa-wallet"></i></span>
+                </div>
+                <div class="mt-3">
+                    <div id="kpi-free-cf" class="text-2xl font-bold text-sky-300 font-mono">--</div>
+                    <div class="flex items-center justify-between mt-2 text-xs">
+                        <span class="text-slate-400">OCF + 資本支出</span>
+                        <span id="kpi-free-cf-yoy" class="font-medium font-mono text-slate-400">--</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts Section -->
+        <section id="charts-section" class="grid grid-cols-1 lg:grid-cols-2 gap-6 opacity-50 pointer-events-none transition-all duration-500">
+            <!-- Chart 1: Cash Flow Comparison -->
+            <div class="glass-card p-6 rounded-2xl flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-chart-column text-sky-400"></i> 兩期三大現金流結構比較
+                        </h3>
+                        <p class="text-xs text-slate-400">當期與比較期之營業、投資、籌資對比 (千元)</p>
+                    </div>
+                </div>
+                <div class="h-72 relative w-full">
+                    <canvas id="cfComparisonChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 2: Cash Flow Breakdown Waterfall -->
+            <div class="glass-card p-6 rounded-2xl flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-diagram-project text-sky-400"></i> 本期現金流流向與變動瀑布圖
+                        </h3>
+                        <p class="text-xs text-slate-400">期初現金至期末現金之主要驅動因素解析</p>
+                    </div>
+                </div>
+                <div class="h-72 relative w-full">
+                    <canvas id="cfWaterfallChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Detailed Data Table Section -->
+        <section id="table-section" class="glass-card rounded-2xl p-6 opacity-50 pointer-events-none transition-all duration-500 space-y-4">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-table-list text-sky-400"></i> 現金流量明細比對表
+                    </h3>
+                    <p class="text-xs text-slate-400">支援快速關鍵字過濾與變動分析</p>
+                </div>
+
+                <!-- Filter Controls -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <!-- Quick Keywords -->
+                    <div class="flex items-center gap-1 bg-slate-900/80 p-1 rounded-lg border border-slate-800">
+                        <button onclick="setFilter('折舊')" class="text-xs px-2.5 py-1 rounded hover:bg-slate-800 text-slate-300 hover:text-sky-400 transition">#折舊</button>
+                        <button onclick="setFilter('股利')" class="text-xs px-2.5 py-1 rounded hover:bg-slate-800 text-slate-300 hover:text-sky-400 transition">#股利</button>
+                        <button onclick="setFilter('不動產')" class="text-xs px-2.5 py-1 rounded hover:bg-slate-800 text-slate-300 hover:text-sky-400 transition">#資本支出</button>
+                        <button onclick="setFilter('')" class="text-xs px-2.5 py-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition">重置</button>
+                    </div>
+
+                    <!-- Search Input -->
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-500"></i>
+                        <input type="text" id="table-search" oninput="filterTable()" placeholder="搜尋會計項目..." class="bg-slate-900 text-xs text-slate-200 pl-8 pr-3 py-1.5 rounded-lg border border-slate-700 focus:outline-none focus:border-sky-500 w-48">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="overflow-x-auto rounded-xl border border-slate-800">
+                <table class="w-full text-left text-xs text-slate-300 font-mono">
+                    <thead class="bg-slate-900/90 text-slate-400 uppercase tracking-wider font-sans border-b border-slate-800">
+                        <tr>
+                            <th class="py-3 px-4 font-semibold">會計項目</th>
+                            <th id="th-current-period" class="py-3 px-4 text-right font-semibold text-slate-200">當期金額</th>
+                            <th id="th-prior-period" class="py-3 px-4 text-right font-semibold text-slate-200">比較期金額</th>
+                            <th class="py-3 px-4 text-right font-semibold">變動金額</th>
+                            <th class="py-3 px-4 text-right font-semibold">變動幅度 (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-slate-800/50 bg-slate-900/30">
+                        <tr>
+                            <td colspan="5" class="py-8 text-center text-slate-500 font-sans">請匯入資料以顯示數據表格</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Custom Notification/Alert Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-800 border border-slate-700 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50">
+        <i id="toast-icon" class="fa-solid fa-circle-info text-sky-400"></i>
+        <span id="toast-message" class="text-xs font-medium">--</span>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Global State Variables
+        let parsedData = [];
+        let periodCurrentHeader = "當期金額";
+        let periodPriorHeader = "比較期金額";
+        let cfComparisonChartInstance = null;
+        let cfWaterfallChartInstance = null;
+
+        // Document Loaded Init
+        document.addEventListener('DOMContentLoaded', () => {
+            setupDragAndDrop();
+        });
+
+        // Toast Notification System
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            const msg = document.getElementById('toast-message');
+
+            msg.innerText = message;
+            
+            if(type === 'error') {
+                icon.className = 'fa-solid fa-triangle-exclamation text-rose-500';
+            } else if(type === 'success') {
+                icon.className = 'fa-solid fa-circle-check text-emerald-400';
+            } else {
+                icon.className = 'fa-solid fa-circle-info text-sky-400';
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 4000);
+        }
+
+        // Drag & Drop Setup
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('drop-zone');
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.add('border-sky-500', 'bg-slate-800/80'), false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.remove('border-sky-500', 'bg-slate-800/80'), false);
+            });
+
+            dropZone.addEventListener('drop', handleDrop, false);
+        }
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length) {
+                readFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length) {
+                readFile(files[0]);
+            }
+        }
+
+        function readFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                let content = e.target.result;
+                
+                // 檢查是否有 Big5 亂碼特徵 (如包含 FFFD 替換字元 )
+                if (content.includes('')) {
+                    // 若用 UTF-8 讀取出現亂碼，則切換為 Big5 重新讀取
+                    const reReader = new FileReader();
+                    reReader.onload = function(reEvent) {
+                        document.getElementById('raw-input').value = reEvent.target.result;
+                        showToast(`已成功以 Big5 編碼載入: ${file.name}`, 'success');
+                        parseRawData();
+                    };
+                    reReader.readAsText(file, 'Big5');
+                    return;
+                }
+
+                document.getElementById('raw-input').value = content;
+                showToast(`已載入檔案: ${file.name}`, 'success');
+                parseRawData();
+            };
+            // 先嘗試用預設/UTF-8讀取
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        // String Cleansing and Number Extraction Algorithm
+        function cleanNumber(str) {
+            if (!str) return 0;
+            // Remove full-width spaces, trim, remove commas
+            let clean = str.replace(/[\s\u3000,]/g, '').trim();
+            if (clean === '' || clean === '-') return 0;
+
+            // Handle parenthesized negative numbers e.g. (25,220) -> -25220
+            if (clean.startsWith('(') && clean.endsWith(')')) {
+                clean = '-' + clean.substring(1, clean.length - 1);
+            }
+            
+            const val = parseFloat(clean);
+            return isNaN(val) ? 0 : val;
+        }
+
+        function formatCurrency(val) {
+            if (val === null || val === undefined || isNaN(val)) return '--';
+            return new Intl.NumberFormat('zh-TW').format(val);
+        }
+
+        function formatPercent(val) {
+            if (val === null || val === undefined || isNaN(val)) return '--%';
+            const sign = val > 0 ? '+' : '';
+            return `${sign}${val.toFixed(2)}%`;
+        }
+
+        // Main Parser
+        function parseRawData() {
+            const rawText = document.getElementById('raw-input').value;
+            if (!rawText.trim()) {
+                showToast('請先貼上資料或載入檔案！', 'error');
+                return;
+            }
+
+            const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+            if (lines.length < 3) {
+                showToast('輸入數據列數不足，請確認是否複製完整表格。', 'error');
+                return;
+            }
+
+            parsedData = [];
+            let headerFound = false;
+
+            lines.forEach((line) => {
+                // Split by tabs or multiple spaces or comma if CSV
+                let cols = [];
+                if (line.includes('\t')) {
+                    cols = line.split('\t');
+                } else if (line.includes(',')) {
+                    cols = line.split(',');
+                } else {
+                    cols = line.split(/\s{2,}/); // split by two or more spaces
+                }
+
+                cols = cols.map(c => c.replace(/^["'\s]+|["'\s]+$/g, '').trim()).filter(c => c !== '');
+
+                if (cols.length >= 3) {
+                    // Check Header Detection
+                    if (!headerFound && (cols[0].includes('會計項目') || cols[0].includes('項目'))) {
+                        periodCurrentHeader = cols[1] || '當期金額';
+                        periodPriorHeader = cols[2] || '比較期金額';
+                        headerFound = true;
+                        return;
+                    }
+
+                    const title = cols[0];
+                    const currentVal = cleanNumber(cols[1]);
+                    const priorVal = cleanNumber(cols[2]);
+                    const diff = currentVal - priorVal;
+                    const pct = priorVal !== 0 ? (diff / Math.abs(priorVal)) * 100 : 0;
+
+                    parsedData.push({
+                        title: title,
+                        current: currentVal,
+                        prior: priorVal,
+                        diff: diff,
+                        pct: pct
+                    });
+                }
+            });
+
+            if (parsedData.length === 0) {
+                showToast('無法成功解析欄位，請檢查分隔符號或資料格式。', 'error');
+                return;
+            }
+
+            // Update Headers in UI
+            document.getElementById('th-current-period').innerText = periodCurrentHeader;
+            document.getElementById('th-prior-period').innerText = periodPriorHeader;
+            document.getElementById('report-period').innerText = periodCurrentHeader;
+            
+            // Try to extract company name from text if available
+            const companyMatch = rawText.match(/公司名稱[:：]\s*([^\s]+)/) || rawText.match(/(\S+股份有限公司)/);
+            if(companyMatch) {
+                document.getElementById('company-name').innerText = companyMatch[1];
+            } else {
+                document.getElementById('company-name').innerText = "台積電 (預設範例)";
+            }
+
+            // Render Dashboard Elements
+            calculateKPIs();
+            renderTable();
+            renderCharts();
+
+            // Enable Dashboard Sections
+            ['kpi-section', 'charts-section', 'table-section'].forEach(id => {
+                const el = document.getElementById(id);
+                el.classList.remove('opacity-50', 'pointer-events-none');
+            });
+
+            showToast('資料解析完成！', 'success');
+        }
+
+        // Find Value Helper using flexible keyword matching
+        function findValueByKeywords(keywords) {
+            for (let kw of keywords) {
+                const found = parsedData.find(item => item.title.includes(kw));
+                if (found) return found;
+            }
+            return { title: '', current: 0, prior: 0, diff: 0, pct: 0 };
+        }
+
+        // Calculate Core Financial KPIs
+        function calculateKPIs() {
+            // 1. OCF: 營業活動之淨現金流入（流出）
+            const ocfObj = findValueByKeywords(['營業活動之淨現金流入', '營業活動之淨現金流', '營業活動之淨現金']);
+            // 2. ICF: 投資活動之淨現金流入（流出）
+            const icfObj = findValueByKeywords(['投資活動之淨現金流入', '投資活動之淨現金流', '投資活動之淨現金']);
+            // 3. FCF: 籌資活動之淨現金流入（流出）
+            const fcfObj = findValueByKeywords(['籌資活動之淨現金流入', '籌資活動之淨現金流', '籌資活動之淨現金']);
+
+            // 4. Capital Expenditure (Capex) - 取得不動產、廠房及設備
+            const capexObj = findValueByKeywords(['取得不動產、廠房及設備', '購置不動產廠房', '取得不動產廠房', '購置不動產']);
+
+            // Free Cash Flow = OCF - |Capex| (確保無論原始數據 Capital Expenditure 為正數或負數均能正確扣除資本支出)
+            const capexCurrentAbs = Math.abs(capexObj.current);
+            const capexPriorAbs = Math.abs(capexObj.prior);
+
+            const freeCashFlowCurrent = ocfObj.current - capexCurrentAbs;
+            const freeCashFlowPrior = ocfObj.prior - capexPriorAbs;
+            const freeCashFlowDiff = freeCashFlowCurrent - freeCashFlowPrior;
+
+            // Render KPI 1: OCF
+            document.getElementById('kpi-ocf').innerText = formatCurrency(ocfObj.current);
+            document.getElementById('kpi-ocf').className = `text-2xl font-bold font-mono ${ocfObj.current >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+            document.getElementById('kpi-ocf-yoy').innerText = `${ocfObj.diff >= 0 ? '+' : ''}${formatCurrency(ocfObj.diff)}`;
+            document.getElementById('kpi-ocf-yoy').className = `font-medium font-mono ${ocfObj.diff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
+            // Render KPI 2: ICF
+            document.getElementById('kpi-icf').innerText = formatCurrency(icfObj.current);
+            document.getElementById('kpi-icf').className = `text-2xl font-bold font-mono ${icfObj.current >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+            document.getElementById('kpi-icf-yoy').innerText = `${icfObj.diff >= 0 ? '+' : ''}${formatCurrency(icfObj.diff)}`;
+            document.getElementById('kpi-icf-yoy').className = `font-medium font-mono ${icfObj.diff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
+            // Render KPI 3: FCF (籌資)
+            document.getElementById('kpi-fcf').innerText = formatCurrency(fcfObj.current);
+            document.getElementById('kpi-fcf').className = `text-2xl font-bold font-mono ${fcfObj.current >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+            document.getElementById('kpi-fcf-yoy').innerText = `${fcfObj.diff >= 0 ? '+' : ''}${formatCurrency(fcfObj.diff)}`;
+            document.getElementById('kpi-fcf-yoy').className = `font-medium font-mono ${fcfObj.diff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
+            // Render KPI 4: Free Cash Flow
+            document.getElementById('kpi-free-cf').innerText = formatCurrency(freeCashFlowCurrent);
+            document.getElementById('kpi-free-cf').className = `text-2xl font-bold font-mono ${freeCashFlowCurrent >= 0 ? 'text-sky-300' : 'text-rose-400'}`;
+            document.getElementById('kpi-free-cf-yoy').innerText = `${freeCashFlowDiff >= 0 ? '+' : ''}${formatCurrency(freeCashFlowDiff)}`;
+            document.getElementById('kpi-free-cf-yoy').className = `font-medium font-mono ${freeCashFlowDiff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+        }
+
+        // Render Data Table
+        function renderTable(dataToRender = parsedData) {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+
+            if (dataToRender.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-500 font-sans">無符合條件的數據</td></tr>`;
+                return;
+            }
+
+            dataToRender.forEach(row => {
+                const isHeaderRow = row.title.includes('淨現金流入') || row.title.includes('餘額') || row.title.startsWith('本期稅前淨利');
+                const tr = document.createElement('tr');
+                tr.className = isHeaderRow 
+                    ? 'bg-slate-800/60 font-bold text-slate-100 hover:bg-slate-800/90 transition' 
+                    : 'hover:bg-slate-800/30 transition text-slate-300';
+
+                const diffClass = row.diff > 0 ? 'text-emerald-400' : row.diff < 0 ? 'text-rose-400' : 'text-slate-400';
+                const pctClass = row.pct > 0 ? 'text-emerald-400' : row.pct < 0 ? 'text-rose-400' : 'text-slate-400';
+
+                tr.innerHTML = `
+                    <td class="py-2.5 px-4 font-sans ${isHeaderRow ? 'text-sky-300' : ''}">${row.title}</td>
+                    <td class="py-2.5 px-4 text-right">${formatCurrency(row.current)}</td>
+                    <td class="py-2.5 px-4 text-right text-slate-400">${formatCurrency(row.prior)}</td>
+                    <td class="py-2.5 px-4 text-right ${diffClass}">${row.diff > 0 ? '+' : ''}${formatCurrency(row.diff)}</td>
+                    <td class="py-2.5 px-4 text-right ${pctClass}">${formatPercent(row.pct)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterTable() {
+            const query = document.getElementById('table-search').value.toLowerCase().trim();
+            if (!query) {
+                renderTable(parsedData);
+                return;
+            }
+            const filtered = parsedData.filter(item => item.title.toLowerCase().includes(query));
+            renderTable(filtered);
+        }
+
+        function setFilter(kw) {
+            document.getElementById('table-search').value = kw;
+            filterTable();
+        }
+
+        // Chart Visualizations
+        function renderCharts() {
+            const ocfObj = findValueByKeywords(['營業活動之淨現金流入', '營業活動之淨現金']);
+            const icfObj = findValueByKeywords(['投資活動之淨現金流入', '投資活動之淨現金']);
+            const fcfObj = findValueByKeywords(['籌資活動之淨現金流入', '籌資活動之淨現金']);
+
+            // 1. Chart 1: Cash Flow Comparison Bar Chart
+            const ctx1 = document.getElementById('cfComparisonChart').getContext('2d');
+            if (cfComparisonChartInstance) cfComparisonChartInstance.destroy();
+
+            cfComparisonChartInstance = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: ['營業現金流 (OCF)', '投資現金流 (ICF)', '籌資現金流 (FCF)'],
+                    datasets: [
+                        {
+                            label: periodCurrentHeader,
+                            data: [ocfObj.current, icfObj.current, fcfObj.current],
+                            backgroundColor: '#0284c7',
+                            borderRadius: 6,
+                        },
+                        {
+                            label: periodPriorHeader,
+                            data: [ocfObj.prior, icfObj.prior, fcfObj.prior],
+                            backgroundColor: '#475569',
+                            borderRadius: 6,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#94a3b8', font: { family: 'Inter' } } },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.dataset.label}: $${formatCurrency(context.raw)} 千元`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+                        y: { 
+                            ticks: { 
+                                color: '#94a3b8',
+                                callback: (value) => value / 1000000 + 'M'
+                            },
+                            grid: { color: '#334155' }
+                        }
+                    }
+                }
+            });
+
+            // 2. Chart 2: Cash Flow Flow Structure Chart
+            const ctx2 = document.getElementById('cfWaterfallChart').getContext('2d');
+            if (cfWaterfallChartInstance) cfWaterfallChartInstance.destroy();
+
+            const netProfit = findValueByKeywords(['本期稅前淨利', '稅前淨利']).current;
+            const periodStartCash = findValueByKeywords(['期初現金及現金等價物餘額', '期初現金']).current;
+            const periodEndCash = findValueByKeywords(['期末現金及現金等價物餘額', '期末現金']).current;
+
+            cfWaterfallChartInstance = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: ['期初現金', '稅前淨利', '營業活動', '投資活動', '籌資活動', '期末現金'],
+                    datasets: [{
+                        label: '金額 (千元)',
+                        data: [periodStartCash, netProfit, ocfObj.current, icfObj.current, fcfObj.current, periodEndCash],
+                        backgroundColor: [
+                            '#64748b',
+                            '#38bdf8',
+                            ocfObj.current >= 0 ? '#10b981' : '#ef4444',
+                            icfObj.current >= 0 ? '#10b981' : '#ef4444',
+                            fcfObj.current >= 0 ? '#10b981' : '#ef4444',
+                            '#0284c7'
+                        ],
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `金額: $${formatCurrency(context.raw)} 千元`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+                        y: { 
+                            ticks: { 
+                                color: '#94a3b8',
+                                callback: (value) => value / 1000000 + 'M'
+                            },
+                            grid: { color: '#334155' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Preset Sample Data (TSMC Style MOPS Standard Statement)
+        function loadSampleData() {
+            const sampleText = `會計項目\t113年01月01日至113年06月30日\t112年01月01日至112年06月30日
+營業活動之現金流量－間接法\t\t
+本期稅前淨利\t423,550,229\t380,120,500
+折舊費用\t150,220,100\t135,110,000
+攤銷費用\t5,220,000\t4,800,000
+營業資產及負債之淨變動\t(25,110,200)\t(18,500,000)
+營業活動之淨現金流入（流出）\t553,880,129\t501,530,500
+投資活動之現金流量\t\t
+取得不動產、廠房及設備\t(320,500,000)\t(280,000,000)
+處分不動產、廠房及設備\t1,200,000\t850,000
+取得無形資產\t(3,100,000)\t(2,500,000)
+投資活動之淨現金流入（流出）\t(322,400,000)\t(281,650,000)
+籌資活動之現金流量\t\t
+短期借款增加（減少）\t(10,200,000)\t15,000,000
+發放現金股利\t(142,600,000)\t(129,700,000)
+籌資活動之淨現金流入（流出）\t(152,800,000)\t(114,700,000)
+匯率變動對現金及現金等價物之影響\t8,500,000\t(2,100,000)
+本期現金及現金等價物增加（減少）數\t87,180,129\t103,080,500
+期初現金及現金等價物餘額\t560,200,000\t457,119,500
+期末現金及現金等價物餘額\t647,380,129\t560,200,000`;
+
+            document.getElementById('raw-input').value = sampleText;
+            parseRawData();
+        }
+
+        // Clear UI and Reset
+        function clearData() {
+            document.getElementById('raw-input').value = '';
+            parsedData = [];
+            
+            // Reset UI Values
+            document.getElementById('company-name').innerText = "未載入公司";
+            document.getElementById('report-period').innerText = "--";
+            document.getElementById('kpi-ocf').innerText = "--";
+            document.getElementById('kpi-icf').innerText = "--";
+            document.getElementById('kpi-fcf').innerText = "--";
+            document.getElementById('kpi-free-cf').innerText = "--";
+
+            document.getElementById('table-body').innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-500 font-sans">請匯入資料以顯示數據表格</td></tr>`;
+
+            // Disable Dashboard Sections
+            ['kpi-section', 'charts-section', 'table-section'].forEach(id => {
+                const el = document.getElementById(id);
+                el.classList.add('opacity-50', 'pointer-events-none');
+            });
+
+            if(cfComparisonChartInstance) cfComparisonChartInstance.destroy();
+            if(cfWaterfallChartInstance) cfWaterfallChartInstance.destroy();
+
+            showToast('已清除所有數據', 'info');
+        }
+    </script>
+</body>
+</html>
