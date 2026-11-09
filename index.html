@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>我的網頁作品集 | Mobile Portfolio</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'Noto Sans TC', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Mobile-First Custom Optimizations */
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+        .touch-action-btn {
+            touch-action: manipulation;
+        }
+        .glass-bottom-bar {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+        .glass-header {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        /* Custom scrollbar for chips */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-brand-500 selection:text-white pb-24 sm:pb-16">
+
+    <!-- 手機優先：頂部固定狀態導航列 -->
+    <header class="sticky top-0 z-40 glass-header border-b border-slate-200/80 transition-all duration-200">
+        <div class="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-sm shadow-sm font-bold">
+                    <i class="fa-solid fa-laptop-code"></i>
+                </div>
+                <span class="font-extrabold text-base tracking-tight text-slate-900">
+                    我的網頁作品集
+                </span>
+            </div>
+
+            <!-- 音樂播放按鈕 (頂部輕量開關) -->
+            <button id="topMusicBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition touch-action-btn border border-slate-200">
+                <i id="topMusicIcon" class="fa-solid fa-music text-blue-600 text-[11px]"></i>
+                <span id="topMusicText">背景音樂</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- 背景音訊本體 -->
+    <audio id="audioPlayer" loop src="Music/SONO%20FELICE.mp3" preload="metadata"></audio>
+
+    <!-- 主內容容器 (Mobile-First 單欄置中，大螢幕自適應延伸) -->
+    <main class="max-w-xl md:max-w-3xl lg:max-w-4xl mx-auto px-4 pt-4 pb-6">
+
+        <!-- ================= 區塊一：作品目錄 SECTION ================= -->
+        <section id="section-portfolio" class="space-y-6">
+            
+            <!-- 手機版醒目標頭 Hero -->
+            <div class="bg-gradient-to-br from-blue-600 via-indigo-600 to-slate-900 rounded-3xl p-5 sm:p-7 text-white shadow-lg shadow-blue-500/10 relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 w-44 h-44 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+                <div class="relative z-10">
+                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-md text-white text-[11px] font-semibold tracking-wide mb-3 border border-white/20">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        MOBILE FIRST PORTFOLIO
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-black tracking-tight leading-snug mb-2">
+                        作品目錄
+                    </h1>
+                    <p class="text-slate-200 text-xs sm:text-sm leading-relaxed max-w-lg">
+                        收錄互動遊戲、智慧財報分析、企業資安脫敏與產業報告等 6 項純前端獨立應用。
+                    </p>
+
+                    <!-- 統計資訊標籤 -->
+                    <div class="flex items-center gap-2 mt-4 pt-3 border-t border-white/10 text-xs text-white/90">
+                        <span class="flex items-center gap-1"><i class="fa-solid fa-cube text-sky-300"></i> 6 個專案</span>
+                        <span class="text-white/40">•</span>
+                        <span class="flex items-center gap-1"><i class="fa-solid fa-bolt text-amber-300"></i> 純前端免後端</span>
+                        <span class="text-white/40">•</span>
+                        <span class="flex items-center gap-1"><i class="fa-solid fa-mobile-screen text-emerald-300"></i> 手機優化</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 分類篩選橫向滾動 (手機滑動體驗佳) -->
+            <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                <button data-category="all" class="cat-pill active px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold text-xs whitespace-nowrap shadow-sm transition touch-action-btn">
+                    全部作品 (6)
+                </button>
+                <button data-category="game" class="cat-pill px-4 py-2 rounded-xl bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80 font-medium text-xs whitespace-nowrap transition touch-action-btn">
+                    🎮 互動與遊戲
+                </button>
+                <button data-category="enterprise" class="cat-pill px-4 py-2 rounded-xl bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80 font-medium text-xs whitespace-nowrap transition touch-action-btn">
+                    🏢 企業與資安
+                </button>
+                <button data-category="data" class="cat-pill px-4 py-2 rounded-xl bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80 font-medium text-xs whitespace-nowrap transition touch-action-btn">
+                    📊 數據與趨勢
+                </button>
+            </div>
+
+            <!-- 作品卡片列表 (手機垂直堆疊，桌面雙欄) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5" id="projectsContainer">
+
+                <!-- 1. 水球爆爆大作戰 -->
+                <article class="project-item bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col" data-cat="game">
+                    <!-- 圖卡頂部 Header -->
+                    <div class="h-36 bg-gradient-to-r from-sky-400 to-blue-600 p-4 flex flex-col justify-between text-white relative">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-bold border border-white/30">
+                                🎮 互動休閒遊戲
+                            </span>
+                            <span class="text-xs bg-black/20 px-2 py-0.5 rounded text-white/90 font-mono">01</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl shadow-inner border border-white/20">
+                                💧
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-bold leading-tight">水球爆爆大作戰</h2>
+                                <p class="text-white/80 text-xs">Water Bomb Battle</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 內容說明區 -->
+                    <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
+                        <!-- 100字簡介 -->
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                <i class="fa-regular fa-file-lines text-blue-500"></i> 作品簡介
+                            </h3>
+                            <p class="text-slate-700 text-sm leading-relaxed">
+                                本作品是一款專為網頁設計的輕快休閒水球互動遊戲。運用純前端 Canvas 畫布結合動態物理碰撞演算法，打造流暢的水球投擲與爆破動畫效果；更深度整合音訊合成技術，在觸控點擊與水球爆炸時產生即時清脆音效。全面適配手機觸控與震動回饋，隨點即玩，帶來沉浸趣味的遊玩體驗。
+                            </p>
+                        </div>
+
+                        <!-- 使用到的 API -->
+                        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                            <h4 class="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-code text-indigo-500"></i> 使用技術 & API
+                            </h4>
+                            <div class="flex flex-wrap gap-1.5">
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">Canvas 2D Context API</span>
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">Web Audio API (音效合成)</span>
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">Touch & Pointer Events</span>
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">requestAnimationFrame</span>
+                            </div>
+                        </div>
+
+                        <!-- 應用場景 -->
+                        <div class="text-xs text-slate-600 bg-sky-50/60 rounded-xl p-3 border border-sky-100">
+                            <span class="font-bold text-sky-800 flex items-center gap-1 mb-1">
+                                <i class="fa-solid fa-bullseye text-sky-600"></i> 應用場景
+                            </span>
+                            適用於社群行銷宣傳活動互動遊戲、展覽攤位平板快玩互動、網頁休閒放鬆小品以及手機瀏覽器觸控互動實作示範。
+                        </div>
+
+                        <!-- 打開按鈕 -->
+                        <a href="apps/water%20bomb%20battle.html" class="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition touch-action-btn">
+                            <span>打開作品</span>
+                            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                        </a>
+                    </div>
+                </article>
+
+                <!-- 2. 合併現金流量表智慧分析儀表板 -->
+                <article class="project-item bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col" data-cat="data">
+                    <!-- 圖卡頂部 Header -->
+                    <div class="h-36 bg-gradient-to-r from-emerald-500 to-teal-700 p-4 flex flex-col justify-between text-white relative">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-bold border border-white/30">
+                                📊 財務智慧分析
+                            </span>
+                            <span class="text-xs bg-black/20 px-2 py-0.5 rounded text-white/90 font-mono">02</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl shadow-inner border border-white/20">
+                                📈
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-bold leading-tight">現金流量表智慧分析</h2>
+                                <p class="text-white/80 text-xs">Cash Flow Statement</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 內容說明區 -->
+                    <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
+                        <!-- 100字簡介 -->
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                <i class="fa-regular fa-file-lines text-emerald-500"></i> 作品簡介
+                            </h3>
+                            <p class="text-slate-700 text-sm leading-relaxed">
+                                專為企業經營者與投資分析師打造的智慧財務儀表板。能將公開資訊觀測站的複雜現金流量表轉換為直覺的視覺化圖表，深度解析營業、投資與籌資三大活動走向。系統具備自由現金流演算、資金缺口預警及體質診斷建議，讓晦澀的財報數字轉化為一目了然的決策依據與動態分析報告。
+                            </p>
+                        </div>
+
+                        <!-- 使用到的 API -->
+                        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                            <h4 class="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-code text-teal-600"></i> 使用技術 & API
+                            </h4>
+                            <div class="flex flex-wrap gap-1.5">
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">Chart.js (動態圖表庫)</span>
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">HTML5 Canvas API</span>
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">Web Storage API</span>
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">Tailwind CSS 響應佈局</span>
+                            </div>
+                        </div>
+
+                        <!-- 應用場景 -->
+                        <div class="text-xs text-slate-600 bg-emerald-50/60 rounded-xl p-3 border border-emerald-100">
+                            <span class="font-bold text-emerald-800 flex items-center gap-1 mb-1">
+                                <i class="fa-solid fa-bullseye text-emerald-600"></i> 應用場景
+                            </span>
+                            適用於上市櫃公司財務體質快篩、高階主管營運資金規劃、個人基本面投資決策，以及財務課程教學實務演示。
+                        </div>
+
+                        <!-- 打開按鈕 -->
+                        <a href="apps/Cash%20Flow%20Statement.html" class="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition touch-action-btn">
+                            <span>打開作品</span>
+                            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                        </a>
+                    </div>
+                </article>
+
+                <!-- 3. 部門階層架構與人員異動管理系統 -->
+                <article class="project-item bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col" data-cat="enterprise">
+                    <!-- 圖卡頂部 Header -->
+                    <div class="h-36 bg-gradient-to-r from-indigo-500 to-purple-700 p-4 flex flex-col justify-between text-white relative">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-bold border border-white/30">
+                                🏢 組織架構管理
+                            </span>
+                            <span class="text-xs bg-black/20 px-2 py-0.5 rounded text-white/90 font-mono">03</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl shadow-inner border border-white/20">
+                                🗂️
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-bold leading-tight">部門階層與人員異動</h2>
+                                <p class="text-white/80 text-xs">Hierarchy & Personnel Manager</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 內容說明區 -->
+                    <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
+                        <!-- 100字簡介 -->
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                <i class="fa-regular fa-file-lines text-indigo-500"></i> 作品簡介
+                            </h3>
+                            <p class="text-slate-700 text-sm leading-relaxed">
+                                專門處理複雜企業組織編制的動態架構管理工具。支援直覺的部門樹狀層級展開與收合，讓管理者清楚掌握部門隸屬關係與主管層級。系統內建 CSV 批次匯入解析與人員異動審核功能，可即時追蹤調職、升遷與歷史異動歷程，有效降低跨部門溝通成本並提升人力資源配置效率。
+                            </p>
+                        </div>
+
+                        <!-- 使用到的 API -->
+                        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                            <h4 class="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-code text-purple-600"></i> 使用技術 & API
+                            </h4>
+                            <div class="flex flex-wrap gap-1.5">
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">PapaParse CSV 解析 API</span>
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">DOM Tree 階層運算 API</span>
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">Blob & File Download API</span>
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">LocalStorage 狀態持久化</span>
+                            </div>
+                        </div>
+
+                        <!-- 應用場景 -->
+                        <div class="text-xs text-slate-600 bg-purple-50/60 rounded-xl p-3 border border-purple-100">
+                            <span class="font-bold text-purple-800 flex items-center gap-1 mb-1">
+                                <i class="fa-solid fa-bullseye text-purple-600"></i> 應用場景
+                            </span>
+                            適用於企業年度組織改組規劃、HR 部門人事異動審核登記、新進員工導覽瞭解公司編制與主管職責歸屬。
+                        </div>
+
+                        <!-- 打開按鈕 -->
+                        <a href="apps/organization_hierarchy_manager%20.html" class="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition touch-action-btn">
+                            <span>打開作品</span>
+                            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                        </a>
+                    </div>
+                </article>
+
+                <!-- 4. 企業資料去識別化與商業機密防護工具 -->
+                <article class="project-item bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col" data-cat="enterprise">
+                    <!-- 圖卡頂部 Header -->
+                    <div class="h-36 bg-gradient-to-r from-amber-500 to-rose-600 p-4 flex flex-col justify-between text-white relative">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-bold border border-white/30">
+                                🛡️ 資安與機密脫敏
+                            </span>
+                            <span class="text-xs bg-black/20 px-2 py-0.5 rounded text-white/90 font-mono">04</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl shadow-inner border border-white/20">
+                                🔒
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-bold leading-tight">資料去識別化防護</h2>
+                                <p class="text-white/80 text-xs">Data Anonymizer</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 內容說明區 -->
+                    <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
+                        <!-- 100字簡介 -->
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                <i class="fa-regular fa-file-lines text-amber-500"></i> 作品簡介
+                            </h3>
+                            <p class="text-slate-700 text-sm leading-relaxed">
+                                針對企業機密防護與個資合規所設計的前端脫敏工具。所有去識別化運算完全在使用者瀏覽器本地端執行，資料絕不上傳雲端，確保零外洩風險。提供 SHA-256 雜湊演算法、電話與身分證遮罩及多欄位規則替換，並原生支援 Excel 與 CSV 檔案批次解析與匯出，兼顧安全與作業效率。
+                            </p>
+                        </div>
+
+                        <!-- 使用到的 API -->
+                        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                            <h4 class="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-code text-amber-600"></i> 使用技術 & API
+                            </h4>
+                            <div class="flex flex-wrap gap-1.5">
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">CryptoJS (SHA-256 雜湊加密)</span>
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">SheetJS (XLSX/CSV 處理)</span>
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">FileReader API (本地二進位讀取)</span>
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">Lucide Web Icons API</span>
+                            </div>
+                        </div>
+
+                        <!-- 應用場景 -->
+                        <div class="text-xs text-slate-600 bg-amber-50/60 rounded-xl p-3 border border-amber-100">
+                            <span class="font-bold text-amber-800 flex items-center gap-1 mb-1">
+                                <i class="fa-solid fa-bullseye text-amber-600"></i> 應用場景
+                            </span>
+                            適用於資料釋出前敏感個資遮罩、提供廠商測試資料保護、AI 模型訓練資料脫敏處理，以及企業法令遵循資安規範。
+                        </div>
+
+                        <!-- 打開按鈕 -->
+                        <a href="apps/data%20deidentification.html" class="w-full py-3 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-[0.98] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition touch-action-btn">
+                            <span>打開作品</span>
+                            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                        </a>
+                    </div>
+                </article>
+
+                <!-- 5. 2026 年台灣製造業導入生成式 AI 五項重要發現 -->
+                <article class="project-item bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col" data-cat="data">
+                    <!-- 圖卡頂部 Header -->
+                    <div class="h-36 bg-gradient-to-r from-blue-700 to-indigo-950 p-4 flex flex-col justify-between text-white relative">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-bold border border-white/30">
+                                📑 產業情報報告
+                            </span>
+                            <span class="text-xs bg-black/20 px-2 py-0.5 rounded text-white/90 font-mono">05</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl shadow-inner border border-white/20">
+                                🤖
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-bold leading-tight">製造業 GenAI 趨勢報告</h2>
+                                <p class="text-white/80 text-xs">Industry Intelligence 2026</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 內容說明區 -->
+                    <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
+                        <!-- 100字簡介 -->
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                <i class="fa-regular fa-file-lines text-blue-600"></i> 作品簡介
+                            </h3>
+                            <p class="text-slate-700 text-sm leading-relaxed">
+                                這是一份結合現代響應式排版與視覺引導的產業情報趨勢報告。以互動式資訊圖表與結構化卡片深入剖析 2026 年台灣製造業在研發設計、製程優化與供應鏈中導入生成式 AI 的關鍵痛點與成果。頁面具備平滑滾動與章節導覽功能，提供清晰易讀且具前瞻性的產業轉型決策指引。
+                            </p>
+                        </div>
+
+                        <!-- 使用到的 API -->
+                        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                            <h4 class="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-code text-blue-800"></i> 使用技術 & API
+                            </h4>
+                            <div class="flex flex-wrap gap-1.5">
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">Intersection Observer API (滾動偵測)</span>
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">CSS Scroll-Behavior 平滑捲動</span>
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">CSS Grid / Flexbox 響應式佈局</span>
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">FontAwesome Webfont</span>
+                            </div>
+                        </div>
+
+                        <!-- 應用場景 -->
+                        <div class="text-xs text-slate-600 bg-blue-50/60 rounded-xl p-3 border border-blue-100">
+                            <span class="font-bold text-blue-900 flex items-center gap-1 mb-1">
+                                <i class="fa-solid fa-bullseye text-blue-700"></i> 應用場景
+                            </span>
+                            適用於製造業主管數位轉型策略會議、高階顧問簡報分享、企業導入生成式 AI 評估報告，以及產業趨勢演講素材。
+                        </div>
+
+                        <!-- 打開按鈕 -->
+                        <a href="apps/industry%20intelligence.html" class="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-blue-800 active:scale-[0.98] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition touch-action-btn">
+                            <span>打開作品</span>
+                            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                        </a>
+                    </div>
+                </article>
+
+                <!-- 6. 動漫主題大數字倒數計時器 -->
+                <article class="project-item bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col" data-cat="game">
+                    <!-- 圖卡頂部 Header -->
+                    <div class="h-36 bg-gradient-to-r from-rose-500 to-purple-600 p-4 flex flex-col justify-between text-white relative">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-bold border border-white/30">
+                                ⏱️ 專注與時間管理
+                            </span>
+                            <span class="text-xs bg-black/20 px-2 py-0.5 rounded text-white/90 font-mono">06</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl shadow-inner border border-white/20">
+                                ⏳
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-bold leading-tight">動漫主題倒數計時器</h2>
+                                <p class="text-white/80 text-xs">Anime Countdown Timer</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 內容說明區 -->
+                    <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
+                        <!-- 100字簡介 -->
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                <i class="fa-regular fa-file-lines text-rose-500"></i> 作品簡介
+                            </h3>
+                            <p class="text-slate-700 text-sm leading-relaxed">
+                                兼具強烈視覺張力與實用性的動漫風格大字體倒數計時工具。採用高對比度的科幻字體與全螢幕專注顯示，支援自訂倒數時間、快速預設按鈕與暫停繼續控制。內建 Web Audio 音效引擎，在關鍵時刻提供多段頻率提醒聲響，無論用於敏捷會議、競賽計時或專注番茄鐘都非常醒目高效。
+                            </p>
+                        </div>
+
+                        <!-- 使用到的 API -->
+                        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                            <h4 class="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-code text-rose-600"></i> 使用技術 & API
+                            </h4>
+                            <div class="flex flex-wrap gap-1.5">
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">Web Audio API (動態合成警報)</span>
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">HTML5 Fullscreen API</span>
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">Window Timer (setInterval)</span>
+                                <span class="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium">Web Font Loader (Orbitron)</span>
+                            </div>
+                        </div>
+
+                        <!-- 應用場景 -->
+                        <div class="text-xs text-slate-600 bg-rose-50/60 rounded-xl p-3 border border-rose-100">
+                            <span class="font-bold text-rose-800 flex items-center gap-1 mb-1">
+                                <i class="fa-solid fa-bullseye text-rose-600"></i> 應用場景
+                            </span>
+                            適用於敏捷團隊每日站立會議計時、個人工作專注番茄鐘、課堂與校園活動競賽限時，以及演講簡報時間把控。
+                        </div>
+
+                        <!-- 打開按鈕 -->
+                        <a href="apps/countdown%20timer.html" class="w-full py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition touch-action-btn">
+                            <span>打開作品</span>
+                            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                        </a>
+                    </div>
+                </article>
+
+            </div>
+        </section>
+
+        <!-- ================= 區塊二：關於我 SECTION ================= -->
+        <section id="section-about" class="space-y-6 hidden">
+            
+            <!-- 個人資訊卡片 (Mobile First 滿版卡片) -->
+            <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden p-6 sm:p-8">
+                
+                <!-- 大頭照與姓名區 -->
+                <div class="flex flex-col sm:flex-row items-center sm:items-start gap-5 pb-6 border-b border-slate-100 text-center sm:text-left">
+                    <div class="relative">
+                        <div class="w-28 h-28 rounded-2xl overflow-hidden shadow-md border-2 border-white ring-4 ring-blue-50 bg-slate-100">
+                            <img src="assets/me.png" alt="個人頭像" class="w-full h-full object-cover" onerror="this.src='assets/ai%20about%20me.png'">
+                        </div>
+                        <span class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center text-white text-[10px]">
+                            <i class="fa-solid fa-check"></i>
+                        </span>
+                    </div>
+
+                    <div class="flex-1">
+                        <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold mb-2">
+                            <i class="fa-solid fa-sparkles"></i> 網頁應用與互動介面開發
+                        </div>
+                        <h2 class="text-2xl font-black text-slate-900 tracking-tight">創作者 / 網頁工程師</h2>
+                        <p class="text-sm text-slate-500 mt-1">
+                            熱愛探索現代 Web 技術、互動視覺化及企業級前端工具開發。
+                        </p>
+
+                        <!-- 個人特色標籤 -->
+                        <div class="flex flex-wrap justify-center sm:justify-start gap-1.5 mt-3">
+                            <span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium">
+                                <i class="fa-solid fa-shield-halved text-amber-500 mr-1"></i>資安去識別化
+                            </span>
+                            <span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium">
+                                <i class="fa-solid fa-chart-pie text-emerald-500 mr-1"></i>財務資料視覺化
+                            </span>
+                            <span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium">
+                                <i class="fa-solid fa-gamepad text-purple-500 mr-1"></i>Canvas 遊戲
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 關於我的詳細介紹 -->
+                <div class="py-6 space-y-4">
+                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-user-astronaut text-blue-600"></i> 個人理念與專業背景
+                    </h3>
+                    <p class="text-slate-700 text-sm leading-relaxed">
+                        你好！歡迎來到我的個人網頁作品集。我專注於打造<strong>「輕量、即開即用、具備高度互動性與實用價值」</strong>的純前端 Web 應用。
+                    </p>
+                    <p class="text-slate-700 text-sm leading-relaxed">
+                        本站所收錄的所有作品，皆無需依賴複雜後端即可在瀏覽器環境完整運作。涵蓋領域包括<strong>休閒互動遊戲（Canvas & Web Audio）</strong>、<strong>企業商業機密保護（本地 SHA-256 脫敏演算法）</strong>、<strong>組織人事樹狀圖</strong>、<strong>財務指標圖表儀表板</strong>與<strong>產業分析洞察</strong>。致力於將設計美感、程式效能與使用者體驗無縫融合。
+                    </p>
+                </div>
+
+                <!-- 視覺形象圖插畫展示 -->
+                <div class="rounded-2xl overflow-hidden border border-slate-200/80 my-4 bg-slate-100">
+                    <img src="assets/ai%20about%20me.png" alt="About Me Illustration" class="w-full h-auto object-cover" onerror="this.style.display='none'">
+                </div>
+
+                <!-- 核心技能矩陣 -->
+                <div class="pt-4 border-t border-slate-100">
+                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-screwdriver-wrench text-blue-600"></i> 掌握核心技術
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-2.5">
+                            <div class="w-7 h-7 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center font-bold">
+                                <i class="fa-brands fa-html5"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-slate-800">HTML5 / Canvas</div>
+                                <div class="text-[10px] text-slate-400">繪圖與多媒體動畫</div>
+                            </div>
+                        </div>
+
+                        <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-2.5">
+                            <div class="w-7 h-7 rounded-lg bg-sky-100 text-sky-600 flex items-center justify-center font-bold">
+                                <i class="fa-brands fa-css3-alt"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-slate-800">Tailwind CSS</div>
+                                <div class="text-[10px] text-slate-400">手機優先響應佈局</div>
+                            </div>
+                        </div>
+
+                        <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-2.5">
+                            <div class="w-7 h-7 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center font-bold">
+                                <i class="fa-brands fa-js"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-slate-800">JavaScript ES6+</div>
+                                <div class="text-[10px] text-slate-400">非同步與原生 API</div>
+                            </div>
+                        </div>
+
+                        <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-2.5">
+                            <div class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
+                                <i class="fa-solid fa-chart-line"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-slate-800">Data Visualization</div>
+                                <div class="text-[10px] text-slate-400">Chart.js 數據視覺化</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 手機優先：底部固定懸浮 App 導航列 (Tab Bar) -->
+    <nav class="fixed bottom-0 left-0 right-0 z-50 glass-bottom-bar border-t border-slate-200/90 shadow-lg">
+        <div class="max-w-xl mx-auto px-4 h-16 flex items-center justify-around">
+            
+            <!-- 導航 1: 作品目錄 -->
+            <button id="tab-portfolio-btn" class="nav-tab active flex-1 flex flex-col items-center justify-center gap-1 text-blue-600 transition touch-action-btn py-1">
+                <i class="fa-solid fa-table-cells-large text-lg"></i>
+                <span class="text-[11px] font-bold">作品目錄</span>
+            </button>
+
+            <!-- 導航 2: 關於我 -->
+            <button id="tab-about-btn" class="nav-tab flex-1 flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-600 transition touch-action-btn py-1">
+                <i class="fa-solid fa-circle-user text-lg"></i>
+                <span class="text-[11px] font-medium">關於我</span>
+            </button>
+
+            <!-- 導航 3: 音樂播放控制器 -->
+            <button id="tab-music-btn" class="flex-1 flex flex-col items-center justify-center gap-1 text-slate-500 hover:text-slate-700 transition touch-action-btn py-1">
+                <div class="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-xs text-blue-600 shadow-sm border border-slate-200" id="bottomMusicCircle">
+                    <i class="fa-solid fa-play text-[10px]" id="bottomMusicIcon"></i>
+                </div>
+                <span class="text-[10px] font-medium text-slate-500" id="bottomMusicLabel">音樂</span>
+            </button>
+
+        </div>
+    </nav>
+
+    <!-- 互動邏輯 JavaScript (手機切換 Tab、分類篩選、音樂播放) -->
+    <script>
+        // 1. Tab 切換邏輯 (作品目錄 vs 關於我)
+        const tabPortfolioBtn = document.getElementById('tab-portfolio-btn');
+        const tabAboutBtn = document.getElementById('tab-about-btn');
+        const sectionPortfolio = document.getElementById('section-portfolio');
+        const sectionAbout = document.getElementById('section-about');
+
+        function showPortfolio() {
+            sectionPortfolio.classList.remove('hidden');
+            sectionAbout.classList.add('hidden');
+            
+            tabPortfolioBtn.classList.add('text-blue-600');
+            tabPortfolioBtn.classList.remove('text-slate-400');
+            tabPortfolioBtn.querySelector('span').classList.add('font-bold');
+
+            tabAboutBtn.classList.remove('text-blue-600');
+            tabAboutBtn.classList.add('text-slate-400');
+            tabAboutBtn.querySelector('span').classList.remove('font-bold');
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function showAbout() {
+            sectionPortfolio.classList.add('hidden');
+            sectionAbout.classList.remove('hidden');
+
+            tabAboutBtn.classList.add('text-blue-600');
+            tabAboutBtn.classList.remove('text-slate-400');
+            tabAboutBtn.querySelector('span').classList.add('font-bold');
+
+            tabPortfolioBtn.classList.remove('text-blue-600');
+            tabPortfolioBtn.classList.add('text-slate-400');
+            tabPortfolioBtn.querySelector('span').classList.remove('font-bold');
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        tabPortfolioBtn.addEventListener('click', showPortfolio);
+        tabAboutBtn.addEventListener('click', showAbout);
+
+        // 2. 分類過濾邏輯
+        const catPills = document.querySelectorAll('.cat-pill');
+        const projectItems = document.querySelectorAll('.project-item');
+
+        catPills.forEach(pill => {
+            pill.addEventListener('click', () => {
+                catPills.forEach(p => {
+                    p.classList.remove('bg-blue-600', 'text-white', 'font-semibold');
+                    p.classList.add('bg-white', 'text-slate-600', 'font-medium');
+                });
+                pill.classList.add('bg-blue-600', 'text-white', 'font-semibold');
+                pill.classList.remove('bg-white', 'text-slate-600', 'font-medium');
+
+                const selectedCat = pill.getAttribute('data-category');
+                projectItems.forEach(item => {
+                    if (selectedCat === 'all' || item.getAttribute('data-cat') === selectedCat) {
+                        item.classList.remove('hidden');
+                    } else {
+                        item.classList.add('hidden');
+                    }
+                });
+            });
+        });
+
+        // 3. 背景音樂播放邏輯 (頂部按鈕 + 底部導航一體聯動)
+        const audioPlayer = document.getElementById('audioPlayer');
+        const topMusicBtn = document.getElementById('topMusicBtn');
+        const topMusicIcon = document.getElementById('topMusicIcon');
+        const topMusicText = document.getElementById('topMusicText');
+        const tabMusicBtn = document.getElementById('tab-music-btn');
+        const bottomMusicIcon = document.getElementById('bottomMusicIcon');
+        const bottomMusicCircle = document.getElementById('bottomMusicCircle');
+        const bottomMusicLabel = document.getElementById('bottomMusicLabel');
+
+        let isPlaying = false;
+
+        function toggleMusic() {
+            if (isPlaying) {
+                audioPlayer.pause();
+                isPlaying = false;
+                // 更新頂部
+                topMusicIcon.className = 'fa-solid fa-music text-blue-600 text-[11px]';
+                topMusicText.textContent = '背景音樂';
+                // 更新底部
+                bottomMusicIcon.className = 'fa-solid fa-play text-[10px]';
+                bottomMusicCircle.classList.remove('bg-blue-600', 'text-white');
+                bottomMusicCircle.classList.add('bg-slate-100', 'text-blue-600');
+                bottomMusicLabel.textContent = '音樂';
+            } else {
+                audioPlayer.play().then(() => {
+                    isPlaying = true;
+                    // 更新頂部
+                    topMusicIcon.className = 'fa-solid fa-pause text-blue-600 text-[11px]';
+                    topMusicText.textContent = '暫停';
+                    // 更新底部
+                    bottomMusicIcon.className = 'fa-solid fa-pause text-[10px]';
+                    bottomMusicCircle.classList.remove('bg-slate-100', 'text-blue-600');
+                    bottomMusicCircle.classList.add('bg-blue-600', 'text-white');
+                    bottomMusicLabel.textContent = '播放中';
+                }).catch(err => {
+                    console.log('音樂播放提示：', err);
+                });
+            }
+        }
+
+        topMusicBtn.addEventListener('click', toggleMusic);
+        tabMusicBtn.addEventListener('click', toggleMusic);
+    </script>
+</body>
+</html>
